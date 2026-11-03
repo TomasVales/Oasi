@@ -1,0 +1,23 @@
+appId: com.studentos.app
+productName: Oasi
+icon: resources/icon.png
+directories:
+  output: release
+  buildResources: resources
+files:
+  - out/**
+  - package.json
+extraResources:
+  - from: drizzle
+    to: drizzle
+  - from: resources/icons
+    to: icons
+asarUnpack:
+  - node_modules/better-sqlite3/**
+mac:
+  category: public.app-category.education
+  target: [dmg]
+win:
+  target: [nsis]
+linux:
+  target: [AppImage]

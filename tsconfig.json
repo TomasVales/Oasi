@@ -1,0 +1,8 @@
+{
+  // Solo para herramientas que leen el tsconfig raíz (tsx, drizzle-kit). El typecheck real usa
+  // tsconfig.node.json (main/preload) y tsconfig.web.json (renderer).
+  "files": [],
+  "compilerOptions": {
+    "paths": { "@shared/*": ["./src/shared/*"] }
+  }
+}

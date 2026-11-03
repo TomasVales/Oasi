@@ -1,0 +1,56 @@
+/*
+ * ─── Fondo personalizado ───────────────────────────────────────────────────
+ * Capas: imagen (con desenfoque) → velo del color del tema (opacidad por tema) → app.
+ * Con fondo activo, las superficies grandes se vuelven translúcidas con desenfoque
+ * detrás (como la "vibrancy" de macOS). El visor de PDF queda opaco para leer.
+ */
+:root {
+  --bg-o: var(--bg-overlay-zen, 0.82);
+}
+[data-bg='on'][data-theme='focus'] {
+  --bg-o: var(--bg-overlay-focus, 0.78);
+}
+[data-bg='on'][data-theme='arcade'] {
+  --bg-o: var(--bg-overlay-arcade, 0.66);
+}
+
+.app-bg {
+  position: absolute;
+  /* Margen extra: el desenfoque no deja bordes claros en los costados. */
+  inset: calc(var(--bg-blur, 0px) * -2);
+  background-size: cover;
+  background-position: center;
+  filter: blur(var(--bg-blur, 0px));
+}
+.app-bg-tint {
+  position: absolute;
+  inset: 0;
+  background: var(--canvas);
+  opacity: var(--bg-o);
+  transition: background-color 220ms ease, opacity 220ms ease;
+}
+
+[data-bg='on'] body {
+  background: var(--canvas);
+}
+/* El contenido principal deja ver el fondo (el velo ya da el tono del tema). */
+[data-bg='on'] .bg-canvas {
+  background-color: transparent;
+}
+/* Barras: vidrio esmerilado, un poco más opaco que el contenido. */
+[data-bg='on'] .bg-rail,
+[data-bg='on'] .bg-sidebar,
+[data-bg='on'] .bg-panel {
+  background-color: color-mix(in srgb, var(--sidebar) calc(min(1, var(--bg-o) + 0.08) * 100%), transparent);
+  backdrop-filter: blur(22px) saturate(1.4);
+}
+/* Tarjetas: casi opacas para que el texto se lea siempre bien. */
+[data-bg='on'] .bg-surface {
+  background-color: color-mix(in srgb, var(--surface) calc((0.55 + var(--bg-o) * 0.4) * 100%), transparent);
+  backdrop-filter: blur(14px);
+}
+/* Lectura: el área del PDF y los modales quedan opacos. */
+[data-bg='on'] .sos-pdf,
+[data-bg='on'] [role='dialog'] {
+  backdrop-filter: none;
+}

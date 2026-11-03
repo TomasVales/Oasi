@@ -1,0 +1,106 @@
+/*
+ * ─── Shell de Oasi ───────────────────────────────────────────────────
+ * Dock de materias → navegación de la sección → contenido.
+ * Firma propia: mosaicos de forma fija con un anillo de urgencia que se llena
+ * a medida que se acerca el próximo parcial/entrega de esa materia.
+ */
+.dock-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
+  user-select: none;
+}
+.dock-item:hover .dock-tile {
+  transform: translateY(-1px);
+}
+.dock-item:active .dock-tile {
+  transform: translateY(0) scale(0.97);
+}
+
+/* Anillo de urgencia: rectángulo redondeado alrededor del mosaico */
+.dock-ring {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  pointer-events: none;
+  overflow: visible;
+}
+.dock-ring rect {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.dock-ring .track {
+  stroke: var(--line);
+}
+[data-theme='arcade'] .dock-ring .value {
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+.dock-label {
+  max-width: 64px;
+  font-size: 10px;
+  line-height: 1.1;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Etiqueta flotante con el nombre completo */
+.dock-tip {
+  position: absolute;
+  left: calc(100% + 2px);
+  top: 4px;
+  white-space: nowrap;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: var(--tooltip);
+  color: var(--tooltip-fg);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.18);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  z-index: 60;
+}
+.dock-item:hover .dock-tip,
+.dock-item:focus-within .dock-tip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Encabezados con línea sutil */
+.shell-header {
+  box-shadow: 0 1px 0 var(--line);
+}
+
+@keyframes live-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+.live-pulse {
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-tile,
+  .dock-tip {
+    transition: none;
+  }
+  .live-pulse {
+    animation: none;
+  }
+}
