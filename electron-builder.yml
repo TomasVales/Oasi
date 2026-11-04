@@ -28,8 +28,13 @@ asarUnpack:
 mac:
   category: public.app-category.education
   target: [dmg]
-  # Sin certificado de Apple Developer: firma ad-hoc (funciona en esta Mac; para distribuir hace falta firmar y notarizar)
-  identity: null
+  # Sin certificado de Apple Developer: firma ad-hoc (funciona en esta Mac; para distribuir hace falta
+  # firmar y notarizar). No usar `identity: null`: eso no firma nada, y como los fusibles modifican el
+  # binario de Electron, su firma original queda inválida y macOS mata la app al abrirla
+  # ("Code Signature Invalid"). Con ad-hoc, el runtime endurecido rechazaría el framework de Electron
+  # (firmado por otro equipo), por eso va apagado.
+  identity: '-'
+  hardenedRuntime: false
 win:
   target: [nsis]
 linux:
