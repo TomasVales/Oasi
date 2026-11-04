@@ -31,6 +31,7 @@ import type {
 export const IpcChannel = {
   AppInfo: 'app:info',
   TrayUpdate: 'tray:update',
+  MiniCommand: 'mini:command',
 
   SubjectsList: 'subjects:list',
   SubjectsCreate: 'subjects:create',
@@ -155,7 +156,8 @@ export const PushChannel = {
   AiEvent: 'push:ai',
   DataChanged: 'push:dataChanged',
   Away: 'push:away',
-  TrayCommand: 'push:trayCommand'
+  TrayCommand: 'push:trayCommand',
+  MiniState: 'push:miniState'
 } as const
 
 /** Estado del cronómetro para la barra de menú (null = sin sesión: se quita). */
@@ -165,7 +167,17 @@ export interface TrayState {
   subject: string
   running: boolean
   phase: 'focus' | 'break' | 'done'
+  /** 0–1, avance de la fase actual. */
+  progress: number
 }
+
+/** Lo que recibe la ventanita flotante. */
+export interface MiniState extends TrayState {
+  theme: ThemeName
+}
+
+/** Botones de la ventanita: los del menú, más abrir Oasi o cerrarla hasta la próxima sesión. */
+export type MiniCommand = TrayCommand | 'open' | 'dismiss'
 
 export type TrayCommand = 'toggle' | 'skip' | 'stop' | 'focus' | 'plus5'
 
@@ -349,6 +361,11 @@ export interface StudentOSApi {
   tray: {
     update: (state: TrayState | null) => void
     onCommand: (cb: (cmd: TrayCommand) => void) => () => void
+  }
+  /** Ventanita flotante del contador. */
+  mini: {
+    onState: (cb: (s: MiniState) => void) => () => void
+    command: (cmd: MiniCommand) => void
   }
   settings: {
     getAll: () => Promise<AppSettings>

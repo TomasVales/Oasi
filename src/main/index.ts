@@ -17,6 +17,8 @@ import { SecretStore } from './secrets'
 import { BackgroundStore } from './backgrounds'
 import { Library } from './library'
 import { TimerTray } from './tray'
+import { MiniTimer } from './miniTimer'
+import type { TrayState } from '@shared/ipc'
 import { z } from 'zod'
 
 const isDev = !app.isPackaged
@@ -51,6 +53,32 @@ function applyAppIcon(variant: IconVariant) {
 
 let dbHandle: DbHandle | null = null
 let repos: Repositories
+let mainWin: BrowserWindow | null = null
+let tray: TimerTray | null = null
+let mini: MiniTimer | null = null
+/** Último estado del cronómetro que mandó el renderer (para reaplicar al cambiar ajustes). */
+let timerState: TrayState | null = null
+
+function applyTimerState() {
+  tray?.update(repos.settings.get('menuBarTimer') ? timerState : null)
+  mini?.update(timerState)
+}
+
+function showMainWindow() {
+  const w = mainWin && !mainWin.isDestroyed() ? mainWin : createMainWindow()
+  if (w.isMinimized()) w.restore()
+  w.show()
+  w.focus()
+}
+
+/** Carga la interfaz (con `hash` = una vista aparte, p. ej. la ventanita del contador). */
+function loadRenderer(win: BrowserWindow, hash?: string) {
+  if (isDev && process.env['ELECTRON_RENDERER_URL']) {
+    void win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}${hash ? `#${hash}` : ''}`)
+  } else {
+    void win.loadFile(join(__dirname, '../renderer/index.html'), hash ? { hash } : undefined)
+  }
+}
 
 function initDatabase(): { dbPath: string } {
   const dbPath = join(app.getPath('userData'), 'student-os.db')
@@ -85,8 +113,10 @@ function initDatabase(): { dbPath: string } {
     onSettingChanged: (key, value) => {
       // El fondo nativo de la ventana acompaña al tema (se ve al redimensionar o al recargar).
       if (key === 'theme' && isTheme(value)) {
-        for (const w of BrowserWindow.getAllWindows()) w.setBackgroundColor(THEME_META[value].windowBackground)
+        for (const w of BrowserWindow.getAllWindows()) if (!mini?.isMini(w)) w.setBackgroundColor(THEME_META[value].windowBackground)
+        mini?.refresh()
       }
+      if (key === 'menuBarTimer' || key === 'miniTimer') applyTimerState()
       if (key === 'appIcon' && isIconVariant(value)) applyAppIcon(value)
     }
   })
@@ -123,12 +153,12 @@ function createMainWindow(): BrowserWindow {
     return { action: 'deny' }
   })
 
-  if (isDev && process.env['ELECTRON_RENDERER_URL']) {
-    void win.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    void win.loadFile(join(__dirname, '../renderer/index.html'))
-  }
-
+  loadRenderer(win)
+  mainWin = win
+  win.on('closed', () => {
+    if (mainWin === win) mainWin = null
+  })
+  mini?.attach(win)
   return win
 }
 
@@ -143,25 +173,50 @@ app.whenReady().then(() => {
     dbPath
   }))
 
+  // Ventanita flotante: se crea antes que la ventana principal para engancharse a ella.
+  mini = new MiniTimer({
+    mainWindow: () => (mainWin && !mainWin.isDestroyed() ? mainWin : null),
+    load: (w) => loadRenderer(w, '/mini'),
+    preload: join(__dirname, '../preload/index.js'),
+    theme: () => repos.settings.get('theme'),
+    enabled: () => repos.settings.get('miniTimer'),
+    themeArg: (t) => `${THEME_ARG_PREFIX}${t}`
+  })
   createMainWindow()
   applyAppIcon(currentIcon())
 
   // Contador en la barra de menú: lo alimenta el renderer mientras hay sesión.
-  const tray = new TimerTray(() => nativeImage.createFromPath(iconPath(currentIcon())))
+  tray = new TimerTray(() => nativeImage.createFromPath(iconPath(currentIcon())), showMainWindow)
   const trayState = z
     .object({
       remaining: z.string().max(12),
       label: z.string().max(40),
       subject: z.string().max(100),
       running: z.boolean(),
-      phase: z.enum(['focus', 'break', 'done'])
+      phase: z.enum(['focus', 'break', 'done']),
+      progress: z.number().min(0).max(1)
     })
     .nullable()
-  ipcMain.on(IpcChannel.TrayUpdate, (_e, raw: unknown) => {
+  ipcMain.on(IpcChannel.TrayUpdate, (e, raw: unknown) => {
+    if (e.sender !== mainWin?.webContents) return // solo la ventana principal maneja el cronómetro
     const parsed = trayState.safeParse(raw)
-    if (parsed.success) tray.update(parsed.data)
+    if (!parsed.success) return
+    timerState = parsed.data
+    applyTimerState()
   })
-  app.on('will-quit', () => tray.destroy())
+  const miniCommand = z.enum(['toggle', 'skip', 'stop', 'focus', 'plus5', 'open', 'dismiss'])
+  ipcMain.on(IpcChannel.MiniCommand, (_e, raw: unknown) => {
+    const parsed = miniCommand.safeParse(raw)
+    if (!parsed.success) return
+    const cmd = parsed.data
+    if (cmd === 'dismiss') return mini?.dismiss()
+    if (cmd === 'open' || cmd === 'focus' || cmd === 'stop') showMainWindow()
+    if (cmd !== 'open') mainWin?.webContents.send(PushChannel.TrayCommand, cmd)
+  })
+  app.on('will-quit', () => {
+    tray?.destroy()
+    mini?.destroy()
+  })
 
   const clientId = '1567335462433984572'
   const rpc = new Client({ transport: 'ipc' })
@@ -180,7 +235,7 @@ app.whenReady().then(() => {
   rpc.login({ clientId }).catch(console.error)
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
+    if (!mainWin || mainWin.isDestroyed()) createMainWindow()
   })
 })
 

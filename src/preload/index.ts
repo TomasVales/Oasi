@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IpcChannel as C, PushChannel, type AiEvent, type AwayEvent, type DataScope, type TrayCommand, type StudentOSApi } from '@shared/ipc'
+import { IpcChannel as C, PushChannel, type AiEvent, type AwayEvent, type DataScope, type TrayCommand, type MiniState, type StudentOSApi } from '@shared/ipc'
 import { isTheme, THEME_ARG_PREFIX } from '@shared/theme'
 
 const themeArg = process.argv.find((a) => a.startsWith(THEME_ARG_PREFIX))?.slice(THEME_ARG_PREFIX.length)
@@ -160,6 +160,14 @@ const api: StudentOSApi = {
       ipcRenderer.on(PushChannel.TrayCommand, listener)
       return () => ipcRenderer.removeListener(PushChannel.TrayCommand, listener)
     }
+  },
+  mini: {
+    onState: (cb) => {
+      const listener = (_e: Electron.IpcRendererEvent, s: MiniState) => cb(s)
+      ipcRenderer.on(PushChannel.MiniState, listener)
+      return () => ipcRenderer.removeListener(PushChannel.MiniState, listener)
+    },
+    command: (cmd) => ipcRenderer.send(C.MiniCommand, cmd)
   },
   settings: {
     getAll: () => invoke(C.SettingsGetAll),

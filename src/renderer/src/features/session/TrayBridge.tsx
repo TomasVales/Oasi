@@ -1,23 +1,22 @@
 import { useEffect, useRef } from 'react'
-import { DEFAULT_SETTINGS } from '@shared/settings'
-import { phaseRemaining } from '@shared/timer'
+import { phaseElapsed, phaseRemaining } from '@shared/timer'
 import { api } from '@/lib/api'
 import { formatClock } from '@/lib/format'
-import { useSettings } from '@/hooks/useAppData'
 import { useSubjects } from '@/hooks/useSubjects'
 import { openFocusMode } from '@/features/focus/FocusOverlay'
 import { useSession } from './SessionProvider'
 
-/** Mantiene el contador de la barra de menú al día y ejecuta lo que se elige en su menú. */
+/**
+ * Manda el estado del cronómetro al proceso main (barra de menú y ventanita flotante; cada
+ * una se muestra según su ajuste) y ejecuta lo que se elige en sus menús y botones.
+ */
 export function TrayBridge() {
   const { session, now, pause, resume, skip, adjust, stop } = useSession()
-  const { data: settings } = useSettings()
   const { data: subjects } = useSubjects()
-  const enabled = settings?.menuBarTimer ?? DEFAULT_SETTINGS.menuBarTimer
   const lastSent = useRef('')
 
   useEffect(() => {
-    if (!session || !enabled) {
+    if (!session) {
       if (lastSent.current !== 'null') api.tray.update(null)
       lastSent.current = 'null'
       return
@@ -29,13 +28,14 @@ export function TrayBridge() {
       label: t.phase === 'done' ? 'Bloque completo' : t.phase === 'break' ? 'Descanso' : running ? 'En foco' : 'En pausa',
       subject: subjects?.find((s) => s.id === session.subjectId)?.name ?? 'Sesión libre',
       running,
-      phase: t.phase
+      phase: t.phase,
+      progress: t.phase === 'done' ? 1 : t.phaseDurationMs ? Math.min(1, phaseElapsed(t, now) / t.phaseDurationMs) : 0
     }
     const key = JSON.stringify(state)
     if (key === lastSent.current) return
     lastSent.current = key
     api.tray.update(state)
-  }, [session, now, enabled, subjects])
+  }, [session, now, subjects])
 
   // Al cerrar o recargar la ventana se quita el contador (vuelve si la sesión se retoma).
   useEffect(() => {

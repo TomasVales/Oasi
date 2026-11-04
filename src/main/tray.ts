@@ -10,7 +10,10 @@ export class TimerTray {
   private tray: Tray | null = null
   private menuKey = ''
 
-  constructor(private readonly icon: () => NativeImage) {}
+  constructor(
+    private readonly icon: () => NativeImage,
+    private readonly showWindow: () => void
+  ) {}
 
   update(state: TrayState | null) {
     if (!state) return this.destroy()
@@ -54,14 +57,6 @@ export class TimerTray {
 
   private send(cmd: TrayCommand) {
     for (const w of BrowserWindow.getAllWindows()) w.webContents.send(PushChannel.TrayCommand, cmd)
-  }
-
-  private showWindow() {
-    const w = BrowserWindow.getAllWindows()[0]
-    if (!w) return
-    if (w.isMinimized()) w.restore()
-    w.show()
-    w.focus()
   }
 
   destroy() {

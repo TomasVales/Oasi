@@ -104,3 +104,10 @@
     animation: none;
   }
 }
+
+/* Ventanita flotante del contador: ventana transparente, solo se ve la tarjeta redondeada. */
+html.mini-window,
+html.mini-window body {
+  background: transparent !important;
+  overflow: hidden;
+}
