@@ -99,6 +99,8 @@ export interface AppSettings {
   chime: ChimeSettings
   /** Contador en la barra de menú (macOS) / bandeja del sistema mientras hay sesión. */
   menuBarTimer: boolean
+  /** Resumen de la semana: se abre solo una vez por semana (lastShown = lunes de la última mostrada). */
+  weeklySummary: { auto: boolean; lastShown: string | null }
   dashboard: DashboardSettings
   appIcon: AppIconVariant
   soundscape: SoundscapeSettings
@@ -118,6 +120,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   focusMode: { auto: true, seconds: 90 },
   chime: { enabled: true, sound: 'bell', volume: 0.6 },
   menuBarTimer: true,
+  weeklySummary: { auto: true, lastShown: null },
   dashboard: { order: [...DASHBOARD_WIDGETS], hidden: [] },
   appIcon: 'clasico',
   soundscape: { enabled: true, autoplay: true, pauseOnBreak: true, sound: 'rain', volume: 0.5 },

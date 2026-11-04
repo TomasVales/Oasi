@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
-import { CalendarPlus, Check, ChevronLeft, ChevronRight, Columns3, LayoutGrid, List, Trash2 } from 'lucide-react'
+import { CalendarPlus, Check, ChevronLeft, ChevronRight, Columns3, LayoutGrid, List, Pencil, Trash2 } from 'lucide-react'
 import { isMilestoneKind, LIFE_EVENT_KINDS, toLocalDate, UNI_EVENT_KINDS, type EventKind } from '@shared/domain'
 import type { CalendarEvent, Subject } from '@shared/models'
 import { api } from '@/lib/api'
@@ -71,6 +71,7 @@ export function CalendarPage() {
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()))
   const [selected, setSelected] = useState<Date | null>(null)
   const [draftDate, setDraftDate] = useState<string | null>(null)
+  const [editing, setEditing] = useState<CalendarEvent | null>(null)
   const qc = useQueryClient()
   const { data: subjects = [] } = useSubjects()
   const color = useSubjectColor()
@@ -101,7 +102,13 @@ export function CalendarPage() {
     mutationFn: (e: CalendarEvent) => api.events.update(e.id, { completedAt: e.completedAt ? null : new Date() }),
     onSuccess: invalidate
   })
-  const remove = useMutation({ mutationFn: (id: string) => api.events.remove(id), onSuccess: invalidate })
+  const remove = useMutation({
+    mutationFn: (id: string) => api.events.remove(id),
+    onSuccess: (_r, id) => {
+      if (editing?.id === id) setEditing(null)
+      invalidate()
+    }
+  })
 
   const list = useMemo(() => (events.data ?? []).filter((e) => !subjectFilter || e.subjectId === subjectFilter), [events.data, subjectFilter])
   const subjectOf = (id: string | null) => subjects.find((s) => s.id === id)
@@ -123,7 +130,14 @@ export function CalendarPage() {
     setSelected(d)
     setDraftDate(toLocalDate(d))
   }
-  const itemProps = { subjectOf, colorOf, onToggle: (e: CalendarEvent) => toggleDone.mutate(e), onRemove: (id: string) => remove.mutate(id) }
+  const itemProps = {
+    subjectOf,
+    colorOf,
+    editingId: editing?.id ?? null,
+    onToggle: (e: CalendarEvent) => toggleDone.mutate(e),
+    onRemove: (id: string) => remove.mutate(id),
+    onEdit: (e: CalendarEvent) => setEditing(e)
+  }
 
   return (
     <div className="h-full overflow-y-auto">
@@ -206,11 +220,30 @@ export function CalendarPage() {
         </section>
 
         <aside>
-          <Card className="sticky top-0 p-4">
+          <Card className={cn('sticky top-0 p-4', editing && 'ring-1 ring-accent')}>
             <h2 className="mb-3 flex items-center gap-2 font-display font-semibold">
-              <CalendarPlus size={16} className="text-accent" /> Nuevo evento
+              {editing ? (
+                <>
+                  <Pencil size={15} className="text-accent" /> Editar evento
+                </>
+              ) : (
+                <>
+                  <CalendarPlus size={16} className="text-accent" /> Nuevo evento
+                </>
+              )}
             </h2>
-            <EventForm defaultSubjectId={subjectFilter} date={draftDate} onCreated={invalidate} />
+            <EventForm
+              // Remonta al cambiar entre crear y editar (o de evento): arranca con sus valores.
+              key={editing?.id ?? 'new'}
+              initial={editing}
+              defaultSubjectId={subjectFilter}
+              date={editing ? null : draftDate}
+              onSaved={() => {
+                setEditing(null)
+                invalidate()
+              }}
+              onCancel={() => setEditing(null)}
+            />
           </Card>
         </aside>
       </div>
@@ -229,8 +262,10 @@ function occursOn(e: CalendarEvent, day: Date): boolean {
 interface ItemProps {
   subjectOf: (id: string | null) => Subject | undefined
   colorOf: (e: CalendarEvent) => string
+  editingId: string | null
   onToggle: (e: CalendarEvent) => void
   onRemove: (id: string) => void
+  onEdit: (e: CalendarEvent) => void
 }
 
 // ─── Lista (línea de tiempo) ─────────────────────────────────────────────────
@@ -274,14 +309,21 @@ function ListView({ events, loading, ...item }: { events: CalendarEvent[]; loadi
   )
 }
 
-function EventCard({ event: e, subjectOf, colorOf, onToggle, onRemove, compact }: { event: CalendarEvent; compact?: boolean } & ItemProps) {
+function EventCard({ event: e, subjectOf, colorOf, editingId, onToggle, onRemove, onEdit, compact }: { event: CalendarEvent; compact?: boolean } & ItemProps) {
   const s = subjectOf(e.subjectId)
   const c = colorOf(e)
   const past = (e.endsAt ?? e.startsAt).getTime() < Date.now()
   const milestone = isMilestoneKind(e.kind)
   const Icon = KIND_META[e.kind].icon
   return (
-    <Card className={cn('group flex items-center gap-4 px-4 py-3', (past || e.completedAt) && 'opacity-55')}>
+    <Card
+      className={cn(
+        'group flex items-center gap-4 px-4 py-3',
+        (past || e.completedAt) && editingId !== e.id && 'opacity-55',
+        editingId === e.id && 'ring-1 ring-accent'
+      )}
+      onDoubleClick={() => e.source === 'manual' && onEdit(e)}
+    >
       {!compact && (
         <div className="w-10 shrink-0 text-center leading-tight">
           <p className="text-[11px] text-fg-subtle uppercase">{weekdayFmt.format(e.startsAt)}</p>
@@ -323,9 +365,14 @@ function EventCard({ event: e, subjectOf, colorOf, onToggle, onRemove, compact }
           <Check size={14} />
         </Button>
         {e.source === 'manual' && (
-          <Button size="icon" variant="ghost" title="Borrar" aria-label={`Borrar ${e.title}`} onClick={() => onRemove(e.id)}>
-            <Trash2 size={14} />
-          </Button>
+          <>
+            <Button size="icon" variant="ghost" title="Editar (o doble clic)" aria-label={`Editar ${e.title}`} onClick={() => onEdit(e)}>
+              <Pencil size={14} />
+            </Button>
+            <Button size="icon" variant="ghost" title="Borrar" aria-label={`Borrar ${e.title}`} onClick={() => onRemove(e.id)}>
+              <Trash2 size={14} />
+            </Button>
+          </>
         )}
       </div>
     </Card>
@@ -478,18 +525,37 @@ function DayDetail({ day, events, ...item }: { day: Date; events: CalendarEvent[
 }
 
 // ─── Alta ────────────────────────────────────────────────────────────────────
-function EventForm({ defaultSubjectId, date: presetDate, onCreated }: { defaultSubjectId: string | null; date: string | null; onCreated: () => void }) {
+const pad2 = (n: number) => String(n).padStart(2, '0')
+const toTimeInput = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+const dayDiff = (a: Date, b: Date) => Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / 86_400_000)
+
+function EventForm({
+  initial,
+  defaultSubjectId,
+  date: presetDate,
+  onSaved,
+  onCancel
+}: {
+  /** Con evento: modo edición. */
+  initial: CalendarEvent | null
+  defaultSubjectId: string | null
+  date: string | null
+  onSaved: () => void
+  onCancel: () => void
+}) {
   const { data: subjects = [] } = useSubjects()
-  const [subjectId, setSubjectId] = useState<string>(defaultSubjectId ?? '')
-  const [kind, setKind] = useState<EventKind>('exam')
-  const [title, setTitle] = useState('')
-  const [date, setDate] = useState('')
-  const [time, setTime] = useState('09:00')
-  const [endTime, setEndTime] = useState('')
-  const [allDay, setAllDay] = useState(false)
-  const [weight, setWeight] = useState(4)
+  const [subjectId, setSubjectId] = useState<string>(initial ? (initial.subjectId ?? '') : (defaultSubjectId ?? ''))
+  const [kind, setKind] = useState<EventKind>(initial?.kind ?? 'exam')
+  const [title, setTitle] = useState(initial?.title ?? '')
+  const [date, setDate] = useState(initial ? toLocalDate(initial.startsAt) : '')
+  const [time, setTime] = useState(initial && !initial.allDay ? toTimeInput(initial.startsAt) : '09:00')
+  const [endTime, setEndTime] = useState(initial?.endsAt && !initial.allDay ? toTimeInput(initial.endsAt) : '')
+  const [allDay, setAllDay] = useState(initial?.allDay ?? false)
+  const [weight, setWeight] = useState(initial?.weight ?? 4)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // Eventos de varios días: al editar se conserva cuántos días después termina.
+  const endOffsetDays = initial?.endsAt ? dayDiff(initial.startsAt, initial.endsAt) : 0
 
   // Al tocar un día en Semana/Mes, el formulario queda listo para ese día.
   useEffect(() => {
@@ -505,23 +571,31 @@ function EventForm({ defaultSubjectId, date: presetDate, onCreated }: { defaultS
     e.preventDefault()
     if (!date) return setError('Elegí una fecha')
     const startsAt = new Date(`${date}T${allDay ? '00:00' : time || '00:00'}`)
-    const endsAt = !allDay && endTime ? new Date(`${date}T${endTime}`) : null
+    let endsAt: Date | null = null
+    if (!allDay && endTime) {
+      endsAt = new Date(`${date}T${endTime}`)
+      endsAt.setDate(endsAt.getDate() + endOffsetDays)
+    } else if (allDay && initial?.allDay && initial.endsAt) {
+      endsAt = new Date(startsAt.getFullYear(), startsAt.getMonth(), startsAt.getDate() + endOffsetDays, 23, 59)
+    }
     if (endsAt && endsAt <= startsAt) return setError('La hora de fin tiene que ser después del inicio')
     setSaving(true)
     setError(null)
+    const values = {
+      subjectId: life ? null : subjectId || null,
+      kind,
+      title: title.trim() || suggested,
+      startsAt,
+      endsAt,
+      allDay,
+      weight: milestone ? weight : 3
+    }
     try {
-      await api.events.create({
-        subjectId: life ? null : subjectId || null,
-        kind,
-        title: title.trim() || suggested,
-        startsAt,
-        endsAt,
-        allDay,
-        weight: milestone ? weight : 3
-      })
+      if (initial) await api.events.update(initial.id, values)
+      else await api.events.create(values)
       setTitle('')
       setEndTime('')
-      onCreated()
+      onSaved()
     } catch (err) {
       setError(ipcErrorMessage(err))
     } finally {
@@ -530,7 +604,7 @@ function EventForm({ defaultSubjectId, date: presetDate, onCreated }: { defaultS
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3">
+    <form onSubmit={submit} onKeyDown={(e) => e.key === 'Escape' && initial && onCancel()} className="space-y-3">
       {KIND_GROUPS.map((g) => (
         <div key={g.label} role="group" aria-label={g.label}>
           <p className="mb-1 text-[11px] font-semibold text-fg-subtle">{g.label}</p>
@@ -619,9 +693,16 @@ function EventForm({ defaultSubjectId, date: presetDate, onCreated }: { defaultS
       )}
 
       {error && <p className="text-xs text-danger">{error}</p>}
-      <Button type="submit" variant="primary" className="w-full justify-center" disabled={saving}>
-        Agregar
-      </Button>
+      <div className="flex gap-2">
+        {initial && (
+          <Button variant="ghost" className="flex-1 justify-center" onClick={onCancel}>
+            Cancelar
+          </Button>
+        )}
+        <Button type="submit" variant="primary" className="flex-1 justify-center" disabled={saving}>
+          {initial ? 'Guardar cambios' : 'Agregar'}
+        </Button>
+      </div>
     </form>
   )
 }

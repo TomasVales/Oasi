@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router'
-import { ChartColumn, Table2 } from 'lucide-react'
+import { CalendarRange, ChartColumn, Table2 } from 'lucide-react'
 import { toLocalDate } from '@shared/domain'
 import { addDays, diffDays } from '@shared/dates'
 import { api } from '@/lib/api'
@@ -16,6 +16,7 @@ import { DailyColumns } from '@/components/charts/DailyColumns'
 import { Heatmap } from '@/components/charts/Heatmap'
 import { SubjectBars } from '@/components/charts/SubjectBars'
 import { SessionList } from '@/features/stats/SessionList'
+import { openWeeklySummary } from '@/features/summary/WeeklySummary'
 
 const RANGES = [
   { days: 7, label: '7 días' },
@@ -97,6 +98,12 @@ export function StatsPage() {
             ))}
           </select>
           <span className="flex-1" />
+          <button
+            onClick={() => openWeeklySummary()}
+            className="flex h-8 items-center gap-1.5 rounded-card px-2.5 text-xs text-fg-muted hover:bg-hover hover:text-fg"
+          >
+            <CalendarRange size={14} /> Resumen semanal
+          </button>
           <button
             onClick={() => setTable((v) => !v)}
             aria-pressed={table}

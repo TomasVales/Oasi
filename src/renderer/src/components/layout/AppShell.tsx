@@ -9,6 +9,7 @@ import { AwayScreen } from '@/features/away/AwayScreen'
 import { FocusOverlay } from '@/features/focus/FocusOverlay'
 import { SessionReflection } from '@/features/session/SessionReflection'
 import { TrayBridge } from '@/features/session/TrayBridge'
+import { WeeklySummary } from '@/features/summary/WeeklySummary'
 import { BackgroundLayer } from '@/features/background/BackgroundLayer'
 import { Onboarding } from '@/features/onboarding/Onboarding'
 import { AnimatePresence } from 'framer-motion'
@@ -85,6 +86,7 @@ export function AppShell() {
       <FocusOverlay />
       <SessionReflection />
       <TrayBridge />
+      {!needsOnboarding && <WeeklySummary />}
       <AwayScreen />
       <AnimatePresence>{needsOnboarding && <Onboarding key="onboarding" />}</AnimatePresence>
     </div>

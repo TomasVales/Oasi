@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert'
 import { describe, it } from 'node:test'
 import { addDays, diffDays, weekdayMon0 } from '../src/shared/dates'
 import { cardId, NEW_CARD, parseFlashcards, scheduleReview } from '../src/shared/flashcards'
+import { summarizeWeek, weekToSummarize } from '../src/shared/weeklySummary'
 import { buildHeatmap, heatLevel } from '../src/shared/heatmap'
 import { blockMinutes, planStudy, type PlannerInput } from '../src/shared/planner'
 import { computeStreaks } from '../src/shared/streaks'
@@ -243,5 +244,39 @@ describe('tarjetas de repaso', () => {
     const nearExam = scheduleReview(s, 'easy', 0, 4)
     assert.equal(nearExam.intervalDays, 3) // el día antes del parcial como tarde
     assert.equal(nearExam.dueAt, 3 * DAY)
+  })
+})
+
+describe('resumen semanal', () => {
+  it('elige la semana: el domingo a la noche la actual, si no la pasada', () => {
+    assert.equal(weekToSummarize(new Date('2026-11-08T19:00:00')), '2026-11-02') // domingo 19 h
+    assert.equal(weekToSummarize(new Date('2026-11-08T10:00:00')), '2026-10-26') // domingo a la mañana
+    assert.equal(weekToSummarize(new Date('2026-11-09T09:00:00')), '2026-11-02') // lunes
+  })
+
+  it('totales, mejor día, foco ponderado, metas y comparación con la semana anterior', () => {
+    const s = summarizeWeek({
+      weekStart: '2026-11-02',
+      prevTotalSeconds: 4 * 3600,
+      subjects: [
+        { id: 'am', name: 'AM2', color: '#f00', weeklyGoalMinutes: 120 },
+        { id: 'fis', name: 'Física', color: '#00f', weeklyGoalMinutes: 180 },
+        { id: 'qui', name: 'Química', color: '#0f0', weeklyGoalMinutes: null }
+      ],
+      sessions: [
+        { subjectId: 'am', localDate: '2026-11-02', activeSeconds: 3600, focusScore: 1 },
+        { subjectId: 'am', localDate: '2026-11-04', activeSeconds: 5400, focusScore: 0.5 },
+        { subjectId: null, localDate: '2026-11-04', activeSeconds: 1800, focusScore: null },
+        { subjectId: 'fis', localDate: '2026-11-09', activeSeconds: 9999, focusScore: null } // otra semana
+      ]
+    })
+    assert.equal(s.totalSeconds, 3 * 3600)
+    assert.equal(s.delta, -0.25)
+    assert.equal(s.daysStudied, 2)
+    assert.deepEqual(s.bestDay, { date: '2026-11-04', seconds: 7200 })
+    assert.equal(s.avgFocus, 0.7) // (1·60 + 0.5·90) / 150
+    assert.deepEqual(s.subjects.map((r) => [r.name, r.seconds]), [['AM2', 9000], ['Sin materia', 1800], ['Física', 0]])
+    assert.equal(s.goalsMet, 1)
+    assert.equal(s.goalsTotal, 2)
   })
 })

@@ -87,6 +87,7 @@ export const settingsSchemas = {
   profile: z.object({ name: z.string().trim().max(60) }),
   idle: z.object({ enabled: z.boolean(), minutes: z.number().int().min(1).max(120) }),
   menuBarTimer: z.boolean(),
+  weeklySummary: z.object({ auto: z.boolean(), lastShown: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable() }),
   chime: z.object({ enabled: z.boolean(), sound: z.enum(CHIME_SOUNDS), volume: z.number().min(0).max(1) }),
   focusMode: z.object({ auto: z.boolean(), seconds: z.number().int().min(10).max(1800) }),
   appIcon: z.enum(['clasico', 'noche', 'neon']),
