@@ -129,3 +129,20 @@ export function skipPhase(s: TimerState, now: number): TimerState {
   }
   return state
 }
+
+/**
+ * Alarga o acorta la fase actual (p. ej. ±5 min). Nunca deja menos de 1 minuto por delante.
+ * En un bloque planificado, alargar el foco también corre el final del bloque.
+ */
+export function adjustPhase(s: TimerState, deltaMs: number, now: number): TimerState {
+  if (s.phase === 'done') return s
+  const elapsed = phaseElapsed(s, now)
+  const phaseDurationMs = Math.max(elapsed + MIN, s.phaseDurationMs + deltaMs)
+  const applied = phaseDurationMs - s.phaseDurationMs
+  if (applied === 0) return s
+  let config = s.config
+  if (s.phase === 'focus' && config.plannedMinutes !== null) {
+    config = { ...config, plannedMinutes: Math.max(1, config.plannedMinutes + Math.round(applied / MIN)) }
+  }
+  return { ...s, phaseDurationMs, config }
+}

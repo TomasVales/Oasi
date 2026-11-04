@@ -15,6 +15,7 @@ import { AppIconPicker } from '@/features/settings/AppIconPicker'
 import { BackgroundSettingsSection } from '@/features/settings/BackgroundSettings'
 import { ProfileSettingsSection } from '@/features/settings/ProfileSettings'
 import { SoundSettingsSection } from '@/features/settings/SoundSettings'
+import { TimerSettingsSection } from '@/features/settings/TimerSettings'
 import { GoogleSettingsSection } from '@/features/settings/GoogleSettings'
 
 export function SettingsPage() {
@@ -41,6 +42,9 @@ export function SettingsPage() {
         <BackgroundSettingsSection />
       </section>
 
+      <div className="mt-10">
+        <TimerSettingsSection />
+      </div>
       <div className="mt-10">
         <ProfileSettingsSection />
       </div>

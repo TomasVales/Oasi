@@ -13,6 +13,7 @@ import { previewAwayScreen } from '@/features/away/AwayScreen'
 
 const MINUTES = [5, 10, 15, 20, 30]
 
+
 export function ProfileSettingsSection() {
   const qc = useQueryClient()
   const { data: settings } = useSettings()

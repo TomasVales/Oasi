@@ -13,6 +13,8 @@ import type { AppSettings, SettingKey, ThemeName } from './settings'
 import type {
   AnchorCreateInput,
   SessionFinishInput,
+  SessionLogInput,
+  SessionUpdateInput,
   SessionStartInput,
   EventCreateInput,
   NoteCreateInput,
@@ -81,6 +83,10 @@ export const IpcChannel = {
   SessionsHeartbeat: 'sessions:heartbeat',
   SessionsFinish: 'sessions:finish',
   SessionsActive: 'sessions:active',
+  SessionsLog: 'sessions:log',
+  SessionsUpdate: 'sessions:update',
+  SessionsRemove: 'sessions:remove',
+  SessionsList: 'sessions:list',
 
   StatsRange: 'stats:range',
   StatsStreak: 'stats:streak',
@@ -275,6 +281,13 @@ export interface StudentOSApi {
     heartbeat: (id: string, activeSeconds: number) => Promise<void>
     finish: (id: string, data: SessionFinishInput) => Promise<StudySession>
     active: () => Promise<StudySession | null>
+    /** Registra estudio hecho sin la app abierta. */
+    log: (input: SessionLogInput) => Promise<StudySession>
+    /** Corregir una sesión cerrada o guardarle la reflexión final (foco, página). */
+    update: (id: string, patch: SessionUpdateInput) => Promise<StudySession>
+    remove: (id: string) => Promise<void>
+    /** Sesiones cerradas entre dos días locales (inclusive), más recientes primero. */
+    list: (from: LocalDate, to: LocalDate) => Promise<StudySession[]>
   }
   stats: {
     /** Totales por día y por materia entre dos días locales (inclusive). */

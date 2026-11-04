@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS } from '@shared/settings'
 import type { StudyMode } from '@shared/planner'
 import {
   activeSeconds,
+  adjustPhase,
   pauseTimer,
   resumeTimer,
   skipPhase,
@@ -25,6 +26,17 @@ export interface StartOptions {
   pagesFrom?: number | null
 }
 
+/** Sesión recién terminada, para la pregunta corta del final (foco y página). */
+export interface FinishedSession {
+  id: string
+  activeSeconds: number
+  documentId: string | null
+  pagesTo: number | null
+}
+
+/** Por debajo de esto no se pregunta nada al terminar (fue una prueba o un arranque en falso). */
+const REFLECTION_MIN_SECONDS = 5 * 60
+
 export interface ActiveSession {
   id: string
   subjectId: string | null
@@ -42,7 +54,11 @@ interface SessionContextValue {
   pauseAt: (at: number) => void
   resume: () => void
   skip: () => void
+  /** Suma o resta minutos a la fase actual. */
+  adjust: (minutes: number) => void
   stop: () => Promise<void>
+  finished: FinishedSession | null
+  clearFinished: () => void
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null)
@@ -62,6 +78,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const { data: settings } = useSettings()
   const [session, setSession] = useState<ActiveSession | null>(null)
   const [now, setNow] = useState(() => Date.now())
+  const [finished, setFinished] = useState<FinishedSession | null>(null)
   const sessionRef = useRef(session)
   sessionRef.current = session
 
@@ -119,7 +136,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(id)
   }, [session?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const finishCurrent = useCallback(async () => {
+  const finishCurrent = useCallback(async (reflect = false) => {
     const s = sessionRef.current
     if (!s) return
     setSession(null)
@@ -128,6 +145,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (s.documentId) pagesTo = await api.documents.get(s.documentId).then((d) => d.maxPageRead || null).catch(() => null)
     await api.sessions.finish(s.id, { activeSeconds: seconds, pagesTo })
     refreshStats()
+    if (reflect && seconds >= REFLECTION_MIN_SECONDS) setFinished({ id: s.id, activeSeconds: seconds, documentId: s.documentId, pagesTo })
   }, [refreshStats])
 
   const start = useCallback(
@@ -172,11 +190,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       pauseAt: (at: number) => update((t, now) => pauseTimer(t, Math.max(t.runningSince ?? 0, Math.min(at, now)))),
       resume: () => update(resumeTimer),
       skip: () => update(skipPhase),
-      stop: finishCurrent
+      adjust: (minutes: number) => update((t, now) => adjustPhase(t, minutes * 60_000, now)),
+      stop: () => finishCurrent(true),
+      finished,
+      clearFinished: () => setFinished(null)
     }),
     // update es estable en la práctica (lee refs)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [session, now, start, finishCurrent]
+    [session, now, start, finishCurrent, finished]
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

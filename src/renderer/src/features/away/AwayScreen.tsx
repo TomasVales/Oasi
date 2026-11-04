@@ -9,6 +9,7 @@ import { useNow } from '@/hooks/useNow'
 import { useSettings } from '@/hooks/useAppData'
 import { useSubjects } from '@/hooks/useSubjects'
 import { useSession } from '@/features/session/SessionProvider'
+import { useBackgroundUrl } from '@/features/background/useBackgroundUrl'
 
 const PREVIEW_EVENT = 'studentos:away-preview'
 /** Muestra el salvapantallas (botón "Probar" en Ajustes). */
@@ -36,6 +37,7 @@ export function AwayScreen() {
   const { session, pauseAt } = useSession()
   const { data: settings } = useSettings()
   const { data: subjects } = useSubjects()
+  const bgUrl = useBackgroundUrl(settings?.background.fileName)
   const sessionRef = useRef(session)
   sessionRef.current = session
 
@@ -99,13 +101,22 @@ export function AwayScreen() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1, transition: { duration: 0.7, ease: EASE_OUT_MAC } }}
           exit={{ opacity: 0, transition: { duration: 0.35, ease: EASE_OUT_MAC } }}
-          className="fixed inset-0 z-[300] flex cursor-default items-center justify-center overflow-hidden bg-canvas select-none"
+          // Fondo propio y opaco: con fondo personalizado, .bg-canvas se vuelve transparente
+          // y dejaba ver la app detrás del saludo.
+          style={{ backgroundColor: 'var(--canvas)' }}
+          className="away-screen fixed inset-0 z-[300] flex cursor-default items-center justify-center overflow-hidden select-none"
         >
+          {bgUrl && (
+            <div aria-hidden className="pointer-events-none absolute inset-0">
+              <div className="away-bg" style={{ backgroundImage: `url("${bgUrl}")` }} />
+              <div className="away-bg-tint" />
+            </div>
+          )}
           <Ambient />
           <motion.div
             initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)', transition: { delay: 0.2, duration: 0.9, ease: EASE_OUT_MAC } }}
-            className="relative flex flex-col items-center gap-3 text-center"
+            className="away-text relative flex flex-col items-center gap-3 text-center"
           >
             <Clock />
             <p className="font-display text-2xl font-semibold tracking-tight text-fg arcade:text-glow arcade:text-accent">

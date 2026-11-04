@@ -119,6 +119,30 @@ describe('anchors', () => {
 })
 
 describe('sessions & check-ins', () => {
+  it('corregir, listar y borrar sesiones cerradas', () => {
+    const a = r.subjects.create({ name: 'A' })
+    const s1 = r.sessions.log({ subjectId: null, minutes: 120, endedAt: new Date('2026-11-01T12:00:00') })
+    const s2 = r.sessions.log({ subjectId: a.id, minutes: 30, endedAt: new Date('2026-11-01T18:00:00') })
+    const open = r.sessions.start({ subjectId: a.id }, day('2026-11-01'))
+    assert.deepEqual(r.sessions.listRange('2026-11-01', '2026-11-01').map((s) => s.id), [s2.id, s1.id]) // sin la abierta
+    const fixed = r.sessions.update(s1.id, { activeSeconds: 3600, subjectId: a.id, focusScore: 0.75 })
+    assert.equal(fixed.activeSeconds, 3600)
+    assert.equal(fixed.focusScore, 0.75)
+    r.sessions.remove(s2.id)
+    assert.deepEqual(r.sessions.dailyTotals('2026-11-01', '2026-11-01'), [{ localDate: '2026-11-01', seconds: 3600 }])
+    assert.equal(r.sessions.active()?.id, open.id)
+  })
+
+  it('registrar estudio sin la app: sesión cerrada que suma al día en que empezó', () => {
+    const a = r.subjects.create({ name: 'A' })
+    const logged = r.sessions.log({ subjectId: a.id, minutes: 60, endedAt: new Date('2026-11-02T00:30:00') })
+    assert.equal(logged.activeSeconds, 3600)
+    assert.equal(logged.localDate, '2026-11-01') // empezó 23:30 del día anterior
+    assert.ok(logged.endedAt)
+    assert.equal(r.sessions.active(), undefined) // no queda abierta
+    assert.deepEqual(r.sessions.dailyTotals('2026-11-01', '2026-11-30'), [{ localDate: '2026-11-01', seconds: 3600 }])
+  })
+
   it('una sola sesión activa; totales por día y por materia', () => {
     const a = r.subjects.create({ name: 'A' })
     const b = r.subjects.create({ name: 'B' })

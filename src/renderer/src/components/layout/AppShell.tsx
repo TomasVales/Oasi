@@ -6,6 +6,8 @@ import { Outlet, useLocation, useSearchParams } from 'react-router'
 import { motion } from 'framer-motion'
 import { page } from '@/lib/motion'
 import { AwayScreen } from '@/features/away/AwayScreen'
+import { FocusOverlay } from '@/features/focus/FocusOverlay'
+import { SessionReflection } from '@/features/session/SessionReflection'
 import { BackgroundLayer } from '@/features/background/BackgroundLayer'
 import { Onboarding } from '@/features/onboarding/Onboarding'
 import { AnimatePresence } from 'framer-motion'
@@ -79,6 +81,8 @@ export function AppShell() {
         </main>
       </div>
       {!needsOnboarding && settings && <CheckInModal />}
+      <FocusOverlay />
+      <SessionReflection />
       <AwayScreen />
       <AnimatePresence>{needsOnboarding && <Onboarding key="onboarding" />}</AnimatePresence>
     </div>

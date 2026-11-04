@@ -1,4 +1,4 @@
-import { and, between, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, between, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { Db } from '../client'
 import { studySessions, subjects } from '../schema'
 import { toLocalDate } from '@shared/domain'
@@ -89,6 +89,47 @@ export function sessionsRepo(db: Db) {
         .get()
       if (!row) throw new NotFoundError('session', id)
       return row
+    },
+
+    /** Sesión cargada a mano (estudiaste sin la app): ya cerrada, cuenta para heatmap y racha. */
+    log(input: { subjectId: string | null; minutes: number; endedAt: Date }): StudySession {
+      const startedAt = new Date(input.endedAt.getTime() - input.minutes * 60_000)
+      return db
+        .insert(studySessions)
+        .values({
+          subjectId: input.subjectId,
+          startedAt,
+          endedAt: input.endedAt,
+          localDate: toLocalDate(startedAt),
+          plannedSeconds: input.minutes * 60,
+          activeSeconds: input.minutes * 60
+        })
+        .returning()
+        .get()
+    },
+
+    /** Corrige una sesión ya cerrada (tiempo, materia) o le agrega la reflexión final. */
+    update(
+      id: string,
+      patch: { subjectId?: string | null; activeSeconds?: number; focusScore?: number | null; pagesTo?: number | null }
+    ): StudySession {
+      const row = db.update(studySessions).set(patch).where(eq(studySessions.id, id)).returning().get()
+      if (!row) throw new NotFoundError('session', id)
+      return row
+    },
+
+    remove(id: string): void {
+      db.delete(studySessions).where(eq(studySessions.id, id)).run()
+    },
+
+    /** Sesiones cerradas entre dos días locales, de la más reciente a la más vieja. */
+    listRange(fromDate: string, toDate: string): StudySession[] {
+      return db
+        .select()
+        .from(studySessions)
+        .where(and(between(studySessions.localDate, fromDate, toDate), isNotNull(studySessions.endedAt)))
+        .orderBy(desc(studySessions.startedAt))
+        .all()
     },
 
     listForDay(localDate: string): StudySession[] {

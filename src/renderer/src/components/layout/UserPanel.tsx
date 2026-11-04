@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { spring } from '@/lib/motion'
 import { useNavigate, useSearchParams } from 'react-router'
-import { Flame, Headphones, Palette, Pause, Play, Settings, SkipForward, Square } from 'lucide-react'
+import { ClockPlus, Flame, Headphones, Maximize2, Palette, Pause, Play, Settings, SkipForward, Square } from 'lucide-react'
 import { useState } from 'react'
 import { SoundPlayer } from '@/features/sound/SoundPlayer'
 import { useSoundscape } from '@/features/sound/SoundscapeProvider'
@@ -21,6 +21,8 @@ import { useStreak } from '@/hooks/useAppData'
 import { useSubjects } from '@/hooks/useSubjects'
 import { useSubjectColor } from '@/hooks/useSubjectColor'
 import { useSession } from '@/features/session/SessionProvider'
+import { LogStudyDialog } from '@/features/session/LogStudyDialog'
+import { openFocusMode, TIMER_SHORTCUTS } from '@/features/focus/FocusOverlay'
 import { MOD_KEY_LABEL } from '@/navigation'
 import { useTheme } from '@/theme/ThemeProvider'
 
@@ -50,8 +52,8 @@ function ProgressRing({ progress, tone, children }: { progress: number; tone: st
   const r = 20
   const c = 2 * Math.PI * r
   return (
-    <div className="relative h-12 w-12 shrink-0">
-      <svg viewBox="0 0 48 48" className="h-full w-full -rotate-90">
+    <div className="relative h-14 w-14 shrink-0">
+      <svg viewBox="0 0 48 48" className="h-full w-full -rotate-90" aria-hidden>
         <circle cx="24" cy="24" r={r} fill="none" strokeWidth="3.5" className="stroke-surface-2" />
         <circle
           cx="24"
@@ -115,15 +117,27 @@ function SessionCardBody({
   const tone = t.phase === 'done' ? 'text-accent' : t.phase === 'break' ? 'text-warning' : running ? 'text-success' : 'text-fg-subtle'
   const stroke = t.phase === 'break' ? 'stroke-warning' : t.phase === 'done' ? 'stroke-accent' : 'stroke-success'
   const progress = t.phase === 'done' ? 1 : t.phaseDurationMs ? Math.min(1, phaseElapsed(t, now) / t.phaseDurationMs) : 0
+  const remaining = formatClock(t.phase === 'done' ? 0 : phaseRemaining(t, now))
 
   return (
-    <div className="mx-2 mb-2 rounded-[12px] border border-line bg-surface p-2.5 shadow-card" aria-live="polite">
+    <div className="mx-2 mb-2 rounded-[12px] border border-line bg-surface p-2.5 shadow-card">
       <div className="flex items-center gap-3">
-        <ProgressRing progress={progress} tone={stroke}>
-          <span className="font-mono text-[10px] font-semibold tabular-nums">{formatClock(t.phase === 'done' ? 0 : phaseRemaining(t, now))}</span>
-        </ProgressRing>
+        <button
+          type="button"
+          onClick={openFocusMode}
+          title={`Vista de foco (${TIMER_SHORTCUTS.focus})`}
+          aria-label={`Abrir vista de foco. Quedan ${remaining}`}
+          className="no-drag shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+        >
+          <ProgressRing progress={progress} tone={stroke}>
+            <span role="timer" className="font-mono text-[12px] font-semibold tabular-nums">
+              {remaining}
+            </span>
+          </ProgressRing>
+        </button>
         <div className="min-w-0 flex-1">
-          <p className={cn('text-[12px] font-semibold', tone, running && 'live-pulse')}>{status}</p>
+          {/* Solo el estado se anuncia (no cada segundo del reloj). */}
+          <p aria-live="polite" className={cn('text-[12px] font-semibold', tone, running && 'live-pulse')}>{status}</p>
           <p className="flex items-center gap-1.5 truncate text-[12px] text-fg">
             {subject && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color(subject.color) }} />}
             <span className="truncate">{subject?.name ?? 'Sesión libre'}</span>
@@ -134,11 +148,11 @@ function SessionCardBody({
       <div className="mt-2 flex items-center gap-1 border-t border-line pt-1.5">
         {t.phase !== 'done' &&
           (running ? (
-            <IconButton label="Pausar" onClick={pause}>
+            <IconButton label={`Pausar (${TIMER_SHORTCUTS.toggle})`} onClick={pause}>
               <Pause size={15} />
             </IconButton>
           ) : (
-            <IconButton label="Reanudar" onClick={resume}>
+            <IconButton label={`Reanudar (${TIMER_SHORTCUTS.toggle})`} onClick={resume}>
               <Play size={15} />
             </IconButton>
           ))}
@@ -147,6 +161,9 @@ function SessionCardBody({
             <SkipForward size={15} />
           </IconButton>
         )}
+        <IconButton label={`Vista de foco (${TIMER_SHORTCUTS.focus})`} onClick={openFocusMode}>
+          <Maximize2 size={14} />
+        </IconButton>
         <span className="flex-1" />
         <IconButton label="Terminar sesión" onClick={() => void stop()} danger>
           <Square size={13} fill="currentColor" />
@@ -168,6 +185,7 @@ export function UserPanel() {
   const { data: streak } = useStreak()
   const sound = useSoundscape()
   const [soundOpen, setSoundOpen] = useState(false)
+  const [logOpen, setLogOpen] = useState(false)
   const today = toLocalDate()
   const from = addDays(today, -6)
   const week = useQuery({ queryKey: queryKeys.statsRange(from, today, null), queryFn: () => api.stats.range(from, today) })
@@ -200,10 +218,13 @@ export function UserPanel() {
         </div>
         <span className="flex-1" />
         {!session && (
-          <IconButton label="Empezar sesión libre" onClick={() => void start({ subjectId: params.get('subject'), plannedMinutes: null })}>
+          <IconButton label={`Empezar sesión libre (${TIMER_SHORTCUTS.toggle})`} onClick={() => void start({ subjectId: params.get('subject'), plannedMinutes: null })}>
             <Play size={15} />
           </IconButton>
         )}
+        <IconButton label="Registrar estudio hecho sin la app" onClick={() => setLogOpen(true)}>
+          <ClockPlus size={15} />
+        </IconButton>
         {sound.settings.enabled && !session && (
           <div className="relative">
             <IconButton label="Sonidos ambiente" onClick={() => setSoundOpen((v) => !v)}>
@@ -253,6 +274,9 @@ export function UserPanel() {
         </div>
         <p className="mt-1 truncate text-[11px] text-fg-muted">{hint}</p>
       </div>
+      <AnimatePresence>
+        {logOpen && <LogStudyDialog key="log" defaultSubjectId={params.get('subject')} onClose={() => setLogOpen(false)} />}
+      </AnimatePresence>
     </div>
   )
 }

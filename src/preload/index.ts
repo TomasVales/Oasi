@@ -91,7 +91,11 @@ const api: StudentOSApi = {
     start: (input) => invoke(C.SessionsStart, input),
     heartbeat: (id, s) => invoke(C.SessionsHeartbeat, id, s),
     finish: (id, data) => invoke(C.SessionsFinish, id, data),
-    active: () => invoke(C.SessionsActive)
+    active: () => invoke(C.SessionsActive),
+    log: (input) => invoke(C.SessionsLog, input),
+    update: (id, patch) => invoke(C.SessionsUpdate, id, patch),
+    remove: (id) => invoke(C.SessionsRemove, id),
+    list: (from, to) => invoke(C.SessionsList, from, to)
   },
   stats: {
     range: (from, to, subjectId) => invoke(C.StatsRange, from, to, subjectId),

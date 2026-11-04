@@ -54,3 +54,38 @@
 [data-bg='on'] [role='dialog'] {
   backdrop-filter: none;
 }
+/* Diálogos, menús y popovers flotantes: fondo sólido. Sin esto quedaban semitransparentes
+   (y sin desenfoque) sobre la app y el texto se mezclaba con lo de atrás. */
+[data-bg='on'] [role='dialog'].bg-surface,
+[data-bg='on'] [role='dialog'] > .bg-surface,
+[data-bg='on'] [role='menu'].bg-surface,
+[data-bg='on'] [role='listbox'].bg-surface,
+[data-bg='on'] .bg-surface.shadow-xl,
+[data-bg='on'] .bg-surface.shadow-2xl {
+  background-color: var(--surface);
+  backdrop-filter: none;
+}
+/* Pantallas completas (bienvenida) y campos dentro de diálogos: color del tema, no transparentes. */
+[data-bg='on'] [role='dialog'].bg-canvas,
+[data-bg='on'] [role='dialog'] .bg-canvas {
+  background-color: var(--canvas);
+}
+
+/* Salvapantallas: la imagen muy desenfocada y bajo un velo fuerte, para que el saludo se lea. */
+.away-bg {
+  position: absolute;
+  inset: -80px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(40px) saturate(1.2);
+  transform: scale(1.05);
+}
+.away-bg-tint {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--canvas) 72%, transparent) 0%, var(--canvas) 85%);
+  opacity: 0.94;
+}
+.away-text {
+  text-shadow: 0 1px 18px color-mix(in srgb, var(--canvas) 80%, transparent);
+}

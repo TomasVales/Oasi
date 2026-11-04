@@ -84,6 +84,7 @@ export const settingsSchemas = {
   google: z.never(),
   profile: z.object({ name: z.string().trim().max(60) }),
   idle: z.object({ enabled: z.boolean(), minutes: z.number().int().min(1).max(120) }),
+  focusMode: z.object({ auto: z.boolean(), seconds: z.number().int().min(10).max(1800) }),
   appIcon: z.enum(['clasico', 'noche', 'neon']),
   onboarding: z.object({ completedAt: z.number().int().positive().nullable() }),
   // background: el archivo lo fija el main al importar; la UI solo cambia el "look" (IPC aparte).
@@ -162,6 +163,25 @@ export const sessionFinishSchema = z.object({
 })
 export type SessionFinishInput = z.infer<typeof sessionFinishSchema>
 export const secondsSchema = seconds
+
+/** Estudio hecho sin la app abierta: se carga a mano (hasta 12 h, de los últimos 30 días). */
+export const sessionLogSchema = z.object({
+  subjectId: idSchema.nullish(),
+  minutes: z.number().int().min(1).max(12 * 60),
+  /** Epoch ms de cuando terminaste de estudiar. */
+  endedAt: z.number().int().positive()
+})
+export type SessionLogInput = z.infer<typeof sessionLogSchema>
+
+export const sessionUpdateSchema = z
+  .object({
+    subjectId: idSchema.nullable(),
+    activeSeconds: z.number().int().min(60).max(12 * 3600),
+    focusScore: z.number().min(0).max(1).nullable(),
+    pagesTo: pageSchema.nullable()
+  })
+  .partial()
+export type SessionUpdateInput = z.infer<typeof sessionUpdateSchema>
 
 export const localDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 

@@ -35,6 +35,14 @@ export interface IdleSettings {
   minutes: number
 }
 
+/** Vista de foco: pantalla con solo el cronómetro mientras estudiás. */
+export interface FocusModeSettings {
+  /** Se abre sola tras unos segundos sin tocar la app durante una sesión en curso. */
+  auto: boolean
+  /** Segundos sin actividad dentro de la app antes de abrirla. */
+  seconds: number
+}
+
 export type AppIconVariant = 'clasico' | 'noche' | 'neon'
 
 export interface BackgroundSettings {
@@ -76,6 +84,7 @@ export interface AppSettings {
   google: GoogleSettings
   profile: { name: string }
   idle: IdleSettings
+  focusMode: FocusModeSettings
   dashboard: DashboardSettings
   appIcon: AppIconVariant
   soundscape: SoundscapeSettings
@@ -92,6 +101,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   google: { clientId: '', calendarIds: [], lastSyncAt: null, lastSyncError: null },
   profile: { name: '' },
   idle: { enabled: true, minutes: 10 },
+  focusMode: { auto: true, seconds: 90 },
   dashboard: { order: [...DASHBOARD_WIDGETS], hidden: [] },
   appIcon: 'clasico',
   soundscape: { enabled: true, autoplay: true, pauseOnBreak: true, sound: 'rain', volume: 0.5 },

@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { DailyColumns } from '@/components/charts/DailyColumns'
 import { Heatmap } from '@/components/charts/Heatmap'
 import { SubjectBars } from '@/components/charts/SubjectBars'
+import { SessionList } from '@/features/stats/SessionList'
 
 const RANGES = [
   { days: 7, label: '7 días' },
@@ -154,6 +155,8 @@ export function StatsPage() {
             <Heatmap totals={year.data?.daily ?? []} end={to} />
           </div>
         </Card>
+
+        <SessionList from={from} to={to} subjectId={subjectId} />
       </div>
     </div>
   )

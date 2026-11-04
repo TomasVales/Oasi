@@ -5,6 +5,7 @@ import { queryClient } from '@/lib/queryClient'
 import { ThemeProvider } from '@/theme/ThemeProvider'
 import { SessionProvider } from '@/features/session/SessionProvider'
 import { SoundscapeProvider } from '@/features/sound/SoundscapeProvider'
+import { ToastProvider } from '@/features/toast/ToastProvider'
 import { AppShell } from '@/components/layout/AppShell'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { CalendarPage } from '@/pages/CalendarPage'
@@ -21,6 +22,7 @@ export default function App() {
       <ThemeProvider>
         <SessionProvider>
         <SoundscapeProvider>
+        <ToastProvider>
         <HashRouter>
           <Routes>
             <Route element={<AppShell />}>
@@ -33,6 +35,7 @@ export default function App() {
             </Route>
           </Routes>
         </HashRouter>
+        </ToastProvider>
         </SoundscapeProvider>
         </SessionProvider>
       </ThemeProvider>

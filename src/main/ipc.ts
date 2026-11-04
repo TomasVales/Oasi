@@ -19,6 +19,8 @@ import {
   planRequestSchema,
   secondsSchema,
   sessionFinishSchema,
+  sessionLogSchema,
+  sessionUpdateSchema,
   sessionStartSchema,
   anchorCreateSchema,
   documentImportSchema,
@@ -246,6 +248,21 @@ export function registerDataHandlers({ repos, library, ai, google, secrets, back
   handle(IpcChannel.SessionsHeartbeat, [idSchema, secondsSchema], (id, s) => repos.sessions.heartbeat(id, s))
   handle(IpcChannel.SessionsFinish, [idSchema, sessionFinishSchema], (id, data) => repos.sessions.finish(id, data))
   handle(IpcChannel.SessionsActive, [], () => repos.sessions.active() ?? null)
+  handle(IpcChannel.SessionsUpdate, [idSchema, sessionUpdateSchema], (id, patch) => {
+    if (patch.subjectId) repos.subjects.get(patch.subjectId)
+    if (repos.sessions.active()?.id === id && patch.activeSeconds !== undefined)
+      throw new Error('No se puede editar el tiempo de la sesión en curso')
+    return repos.sessions.update(id, patch)
+  })
+  handle(IpcChannel.SessionsRemove, [idSchema], (id) => repos.sessions.remove(id))
+  handle(IpcChannel.SessionsList, [localDateSchema, localDateSchema], (from, to) => repos.sessions.listRange(from, to))
+  handle(IpcChannel.SessionsLog, [sessionLogSchema], (input) => {
+    const now = Date.now()
+    if (input.endedAt > now + 60_000) throw new Error('No se puede registrar estudio en el futuro')
+    if (input.endedAt - input.minutes * 60_000 < now - 30 * 86_400_000) throw new Error('Solo se puede registrar estudio de los últimos 30 días')
+    if (input.subjectId) repos.subjects.get(input.subjectId) // valida que exista
+    return repos.sessions.log({ subjectId: input.subjectId ?? null, minutes: input.minutes, endedAt: new Date(input.endedAt) })
+  })
 
   // Estadísticas
   handle(IpcChannel.StatsRange, [localDateSchema, localDateSchema, idSchema.nullish()], (from, to, subjectId) => ({

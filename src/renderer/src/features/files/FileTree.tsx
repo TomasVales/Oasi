@@ -11,6 +11,7 @@ import { popover, spring } from '@/lib/motion'
 import { queryKeys } from '@/lib/queryClient'
 import { usePersistentState } from '@/hooks/usePersistentState'
 import { FolderDialog } from './FolderDialog'
+import { useToast } from '@/features/toast/ToastProvider'
 
 const ITEM_MIME = 'application/x-studentos-item'
 type DragItem = { kind: 'document' | 'note' | 'folder'; id: string }
@@ -41,6 +42,9 @@ export function FileTree({ subjectId }: { subjectId: string }) {
   const [dialog, setDialog] = useState<DialogState>(null)
   const [rootOver, setRootOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Ítems borrados que todavía se pueden recuperar con "Deshacer" (se ocultan ya). */
+  const [trashed, setTrashed] = useState<string[]>([])
+  const toast = useToast()
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: queryKeys.folders(subjectId) })
@@ -61,13 +65,13 @@ export function FileTree({ subjectId }: { subjectId: string }) {
     const childFolders = new Map<string | null, Folder[]>()
     for (const f of folders.data ?? []) childFolders.set(f.parentId, [...(childFolders.get(f.parentId) ?? []), f])
     const docsIn = new Map<string | null, DocumentRecord[]>()
-    for (const d of docs.data ?? []) docsIn.set(d.folderId, [...(docsIn.get(d.folderId) ?? []), d])
+    for (const d of (docs.data ?? []).filter((x) => !trashed.includes(x.id))) docsIn.set(d.folderId, [...(docsIn.get(d.folderId) ?? []), d])
     const notesIn = new Map<string | null, Note[]>()
-    for (const n of notes.data ?? []) notesIn.set(n.folderId, [...(notesIn.get(n.folderId) ?? []), n])
+    for (const n of (notes.data ?? []).filter((x) => !trashed.includes(x.id))) notesIn.set(n.folderId, [...(notesIn.get(n.folderId) ?? []), n])
     const count = (id: string): number =>
       (docsIn.get(id)?.length ?? 0) + (notesIn.get(id)?.length ?? 0) + (childFolders.get(id) ?? []).reduce((a, f) => a + count(f.id), 0)
     return { childFolders, docsIn, notesIn, count }
-  }, [folders.data, docs.data, notes.data])
+  }, [folders.data, docs.data, notes.data, trashed])
 
   const moveTo = (item: DragItem, folderId: string | null) =>
     run(() =>
@@ -77,6 +81,33 @@ export function FileTree({ subjectId }: { subjectId: string }) {
           ? api.notes.move(item.id, folderId)
           : api.folders.update(item.id, { parentId: folderId })
     )
+
+  /**
+   * Borrar con "Deshacer": se oculta al instante y se borra de verdad cuando el aviso se va.
+   * Si estaba abierto, primero se sale de esa vista (el editor no guarda sobre algo borrado).
+   */
+  const removeItem = (item: DragItem, label: string) => {
+    if (item.kind === 'folder') return
+    const open = item.kind === 'document' ? params.get('doc') === item.id : params.get('note') === item.id
+    if (open && pathname === '/estudio') navigate(`/estudio?subject=${subjectId}`)
+    setTrashed((t) => [...t, item.id])
+    const restore = () => setTrashed((t) => t.filter((x) => x !== item.id))
+    toast.undoable({
+      text: `${item.kind === 'note' ? 'Apunte' : 'PDF'} “${label}” eliminado`,
+      commit: async () => {
+        if (item.kind === 'document') await api.documents.remove(item.id)
+        else await api.notes.remove(item.id)
+        // Se espera la lista nueva antes de "des-ocultar": así no reaparece un instante.
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: queryKeys.documents(subjectId) }),
+          qc.invalidateQueries({ queryKey: queryKeys.notes(subjectId) })
+        ])
+        restore()
+      },
+      undo: restore,
+      onError: (err) => toast.show({ kind: 'error', text: `No se pudo eliminar: ${ipcErrorMessage(err)}` })
+    })
+  }
 
   const docParam = params.get('doc')
   const noteParam = params.get('note')
@@ -118,6 +149,7 @@ export function FileTree({ subjectId }: { subjectId: string }) {
           hint={`${d.pageCount} págs. · leído hasta la ${d.maxPageRead}`}
           active={pathname === '/estudio' && docParam === d.id && !noteParam}
           muted={d.maxPageRead >= d.pageCount}
+          onDelete={() => removeItem({ kind: 'document', id: d.id }, d.title)}
         />
       ))}
       {(tree.notesIn.get(folderId) ?? []).map((n) => (
@@ -129,6 +161,7 @@ export function FileTree({ subjectId }: { subjectId: string }) {
           icon={NotebookPen}
           label={n.title}
           active={pathname === '/estudio' && noteParam === n.id}
+          onDelete={() => removeItem({ kind: 'note', id: n.id }, n.title)}
         />
       ))}
     </>
@@ -208,7 +241,8 @@ function ItemRow({
   label,
   hint,
   active,
-  muted
+  muted,
+  onDelete
 }: {
   item: DragItem
   depth: number
@@ -218,27 +252,42 @@ function ItemRow({
   hint?: string
   active: boolean
   muted?: boolean
+  onDelete: () => void
 }) {
+  const what = item.kind === 'note' ? 'apunte' : 'PDF'
   return (
-    <Link
-      to={to}
-      title={hint}
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData(ITEM_MIME, JSON.stringify(item))
-        e.dataTransfer.effectAllowed = 'move'
-      }}
-      style={indent(depth)}
-      className={cn(
-        'no-drag group relative flex h-8 items-center gap-2 rounded-[8px] pr-2 text-[13.5px] transition-colors',
-        active
-          ? 'bg-selected font-medium text-fg arcade:text-accent before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-accent'
-          : cn('hover:bg-hover hover:text-fg', muted ? 'text-fg-subtle' : 'text-fg-muted')
-      )}
-    >
-      <Icon size={15} strokeWidth={1.9} className="shrink-0 text-fg-subtle" />
-      <span className="truncate">{label}</span>
-    </Link>
+    <div className="group relative">
+      <Link
+        to={to}
+        title={hint}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData(ITEM_MIME, JSON.stringify(item))
+          e.dataTransfer.effectAllowed = 'move'
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Delete' || (e.key === 'Backspace' && (e.metaKey || e.ctrlKey))) {
+            e.preventDefault()
+            onDelete()
+          }
+        }}
+        style={indent(depth)}
+        className={cn(
+          'no-drag relative flex h-8 items-center gap-2 rounded-[8px] pr-8 text-[13.5px] transition-colors',
+          active
+            ? 'bg-selected font-medium text-fg arcade:text-accent before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-accent'
+            : cn('hover:bg-hover hover:text-fg', muted ? 'text-fg-subtle' : 'text-fg-muted')
+        )}
+      >
+        <Icon size={15} strokeWidth={1.9} className="shrink-0 text-fg-subtle" />
+        <span className="truncate">{label}</span>
+      </Link>
+      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+        <RowButton label={`Eliminar ${what} “${label}”`} onClick={onDelete}>
+          <Trash2 size={13} />
+        </RowButton>
+      </div>
+    </div>
   )
 }
 

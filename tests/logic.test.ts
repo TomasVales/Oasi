@@ -11,6 +11,7 @@ import {
   phaseRemaining,
   resumeTimer,
   skipPhase,
+  adjustPhase,
   startTimer,
   tickTimer,
   type TimerConfig
@@ -107,6 +108,15 @@ describe('cronómetro', () => {
     assert.equal(s.phase, 'break')
     assert.equal(activeSeconds(s, 6 * MIN), 5 * 60)
     assert.equal(phaseRemaining(s, 5 * MIN), 10 * MIN)
+  })
+  it('±5 min: alarga el foco (y el bloque) y nunca deja menos de 1 minuto', () => {
+    let s = startTimer({ ...cfg, plannedMinutes: 30 }, 0)
+    const base = s.phaseDurationMs
+    s = adjustPhase(s, 5 * MIN, 0)
+    assert.equal(s.phaseDurationMs, base + 5 * MIN)
+    assert.equal(s.config.plannedMinutes, 35)
+    s = adjustPhase(s, -500 * MIN, 10 * MIN)
+    assert.equal(phaseRemaining(s, 10 * MIN), MIN)
   })
 })
 
