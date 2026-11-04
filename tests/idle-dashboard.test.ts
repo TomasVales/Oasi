@@ -56,7 +56,7 @@ describe('dashboard modular', () => {
   it('normaliza layouts guardados y agrega widgets nuevos al final', () => {
     const d = normalizeDashboard({ order: ['heatmap', 'plan', 'plan', 'inexistente' as never], hidden: ['streak', 'x' as never] })
     assert.deepEqual(d.order.slice(0, 2), ['heatmap', 'plan'])
-    assert.equal(d.order.length, 6)
+    assert.equal(d.order.length, 8) // los 8 widgets, sin repetidos
     assert.deepEqual(d.hidden, ['streak'])
   })
   it('mueve un widget a la posición de otro', () => {

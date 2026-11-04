@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert'
 import { describe, it } from 'node:test'
 import { addDays, diffDays, weekdayMon0 } from '../src/shared/dates'
+import { cardId, NEW_CARD, parseFlashcards, scheduleReview } from '../src/shared/flashcards'
 import { buildHeatmap, heatLevel } from '../src/shared/heatmap'
 import { blockMinutes, planStudy, type PlannerInput } from '../src/shared/planner'
 import { computeStreaks } from '../src/shared/streaks'
@@ -199,5 +200,48 @@ describe('planificador', () => {
     assert.equal(planStudy({ ...base, now: new Date('2026-11-04T00:10:00') }).blocks.length, 0)
     assert.equal(planStudy({ ...base, now: new Date('2026-11-04T05:59:00') }).blocks.length, 0)
     assert.ok(planStudy({ ...base, now: new Date('2026-11-04T06:00:00') }).blocks.length > 0)
+  })
+})
+
+describe('tarjetas de repaso', () => {
+
+  it('lee "pregunta :: respuesta" de los apuntes, ignorando código y duplicados', () => {
+    const md = [
+      '# Tema 1',
+      '- ¿Qué es un límite? :: El valor al que se acerca f(x)',
+      '> **Bolzano** :: raíz si cambia de signo',
+      'texto normal con a::b pegado',
+      '```',
+      'x :: y',
+      '```',
+      '¿Qué es un límite? :: duplicada',
+      '1. Derivada :: pendiente de la tangente'
+    ].join('\n')
+    assert.deepEqual(parseFlashcards(md), [
+      { front: '¿Qué es un límite?', back: 'El valor al que se acerca f(x)' },
+      { front: '**Bolzano**', back: 'raíz si cambia de signo' },
+      { front: 'Derivada', back: 'pendiente de la tangente' }
+    ])
+  })
+
+  it('el id depende de la pregunta (no de mayúsculas ni espacios)', () => {
+    assert.equal(cardId('n1', 'Hola  Mundo'), cardId('n1', 'hola mundo'))
+    assert.notEqual(cardId('n1', 'a'), cardId('n2', 'a'))
+  })
+
+  it('intervalos crecientes; "otra vez" vuelve en 10 min; un parcial cerca los acorta', () => {
+    const DAY = 86_400_000
+    let s = scheduleReview(NEW_CARD, 'good', 0)
+    assert.equal(s.intervalDays, 1)
+    s = scheduleReview(s, 'good', 0)
+    assert.equal(s.intervalDays, 3)
+    s = scheduleReview(s, 'good', 0)
+    assert.equal(s.intervalDays, 7.5)
+    const again = scheduleReview(s, 'again', 0)
+    assert.equal(again.dueAt, 10 * 60_000)
+    assert.equal(again.lapses, 1)
+    const nearExam = scheduleReview(s, 'easy', 0, 4)
+    assert.equal(nearExam.intervalDays, 3) // el día antes del parcial como tarde
+    assert.equal(nearExam.dueAt, 3 * DAY)
   })
 })

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IpcChannel as C, PushChannel, type AiEvent, type AwayEvent, type DataScope, type StudentOSApi } from '@shared/ipc'
+import { IpcChannel as C, PushChannel, type AiEvent, type AwayEvent, type DataScope, type TrayCommand, type StudentOSApi } from '@shared/ipc'
 import { isTheme, THEME_ARG_PREFIX } from '@shared/theme'
 
 const themeArg = process.argv.find((a) => a.startsWith(THEME_ARG_PREFIX))?.slice(THEME_ARG_PREFIX.length)
@@ -97,6 +97,10 @@ const api: StudentOSApi = {
     remove: (id) => invoke(C.SessionsRemove, id),
     list: (from, to) => invoke(C.SessionsList, from, to)
   },
+  flashcards: {
+    deck: (subjectId) => invoke(C.FlashcardsDeck, subjectId ?? null),
+    review: (input) => invoke(C.FlashcardsReview, input)
+  },
   stats: {
     range: (from, to, subjectId) => invoke(C.StatsRange, from, to, subjectId),
     streak: () => invoke(C.StatsStreak)
@@ -148,6 +152,14 @@ const api: StudentOSApi = {
     const listener = (_e: Electron.IpcRendererEvent, ev: AwayEvent) => cb(ev)
     ipcRenderer.on(PushChannel.Away, listener)
     return () => ipcRenderer.removeListener(PushChannel.Away, listener)
+  },
+  tray: {
+    update: (state) => ipcRenderer.send(C.TrayUpdate, state),
+    onCommand: (cb) => {
+      const listener = (_e: Electron.IpcRendererEvent, cmd: TrayCommand) => cb(cmd)
+      ipcRenderer.on(PushChannel.TrayCommand, listener)
+      return () => ipcRenderer.removeListener(PushChannel.TrayCommand, listener)
+    }
   },
   settings: {
     getAll: () => invoke(C.SettingsGetAll),

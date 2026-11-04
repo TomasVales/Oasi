@@ -5,6 +5,7 @@ import {
   ENERGY_LEVELS,
   EVENT_KINDS,
   EVENT_SOURCES,
+  SESSION_SOURCES,
   type NormalizedRect
 } from '../../shared/domain'
 import type { SnapshotBlock } from '../../shared/planProgress'
@@ -33,6 +34,8 @@ export const subjects = sqliteTable('subjects', {
   color: text('color').notNull().default('#6366f1'),
   /** 1–5. Carga cognitiva base de la materia; la usa el planificador para cruzar con la energía. */
   difficulty: integer('difficulty').notNull().default(3),
+  /** Minutos por semana que te proponés estudiar esta materia; null = sin meta. */
+  weeklyGoalMinutes: integer('weekly_goal_minutes'),
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt()
@@ -199,6 +202,8 @@ export const studySessions = sqliteTable(
     focusScore: real('focus_score'),
     pagesFrom: integer('pages_from'),
     pagesTo: integer('pages_to'),
+    /** timer = cronómetro de la app · manual = cargada después ("estudié sin la app"). */
+    source: text('source', { enum: SESSION_SOURCES }).notNull().default('timer'),
     createdAt: createdAt()
   },
   (t) => [
@@ -222,6 +227,30 @@ export const planSnapshots = sqliteTable(
     createdAt: createdAt()
   },
   (t) => [index('plan_snapshots_date_idx').on(t.localDate)]
+)
+
+// ─── Tarjetas de repaso (repetición espaciada) ────────────────────────────────
+/**
+ * Las tarjetas viven en el texto de los apuntes (líneas "pregunta :: respuesta"); acá solo
+ * se guarda su progreso. La clave es apunte + texto de la pregunta: editar la respuesta
+ * conserva el progreso, cambiar la pregunta la vuelve una tarjeta nueva.
+ */
+export const flashcardReviews = sqliteTable(
+  'flashcard_reviews',
+  {
+    /** `${noteId}:${hash de la pregunta}` */
+    id: text('id').primaryKey(),
+    noteId: text('note_id')
+      .notNull()
+      .references(() => notes.id, { onDelete: 'cascade' }),
+    ease: real('ease').notNull().default(2.5),
+    intervalDays: real('interval_days').notNull().default(0),
+    reps: integer('reps').notNull().default(0),
+    lapses: integer('lapses').notNull().default(0),
+    dueAt: integer('due_at', { mode: 'timestamp_ms' }).notNull(),
+    lastReviewedAt: integer('last_reviewed_at', { mode: 'timestamp_ms' })
+  },
+  (t) => [index('flashcards_note_idx').on(t.noteId), index('flashcards_due_idx').on(t.dueAt)]
 )
 
 // ─── Preferencias (tema, pomodoro, etc.) ─────────────────────────────────────

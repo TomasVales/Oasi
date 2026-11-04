@@ -5,6 +5,7 @@ import { openDatabase, type DbHandle } from '../src/main/db/client'
 import { createRepositories, type Repositories } from '../src/main/db/repositories'
 import { eventCreateSchema, settingsSchemas, subjectCreateSchema } from '../src/shared/validation'
 import { DEFAULT_SETTINGS } from '../src/shared/settings'
+import { flashcardDeck, reviewFlashcard } from '../src/main/flashcards'
 
 const MIGRATIONS = join(import.meta.dirname, '..', 'drizzle')
 const day = (iso: string) => new Date(`${iso}T10:00:00`)
@@ -115,6 +116,44 @@ describe('anchors', () => {
     const rects = [{ x: 0.1, y: 0.1, w: 0.8, h: 0.02 }, { x: 0.1, y: 0.13, w: 0.4, h: 0.02 }]
     const a = r.anchors.create({ documentId: d.id, kind: 'text', page: 2, rects, selectedText: 'Teorema' })
     assert.deepEqual(r.anchors.get(a.id).rects, rects)
+  })
+})
+
+describe('migración study_extras', () => {
+  it('sesiones manuales marcadas, meta semanal y progreso de tarjetas (se borra con el apunte)', () => {
+    const a = r.subjects.create({ name: 'A', weeklyGoalMinutes: 240 })
+    assert.equal(a.weeklyGoalMinutes, 240)
+    assert.equal(r.sessions.log({ subjectId: a.id, minutes: 30, endedAt: new Date('2026-11-01T12:00:00') }).source, 'manual')
+    assert.equal(r.sessions.start({ subjectId: a.id }).source, 'timer')
+    const n = r.notes.create({ subjectId: a.id, title: 'N', content: '¿2+2? :: 4' })
+    r.flashcards.save({ id: `${n.id}:x`, noteId: n.id, ease: 2.5, intervalDays: 1, reps: 1, lapses: 0, dueAt: new Date(), lastReviewedAt: new Date() })
+    assert.equal(r.flashcards.all().length, 1)
+    r.notes.remove(n.id)
+    assert.equal(r.flashcards.all().length, 0)
+  })
+})
+
+describe('repaso', () => {
+  it('arma el mazo desde los apuntes: primero la materia con parcial cerca; repasar la reprograma', () => {
+    const now = new Date('2026-11-04T10:00:00')
+    const a = r.subjects.create({ name: 'Sin parcial' })
+    const b = r.subjects.create({ name: 'Con parcial' })
+    r.notes.create({ subjectId: a.id, title: 'A', content: 'P1 :: R1\nP2 :: R2' })
+    const nb = r.notes.create({ subjectId: b.id, title: 'B', content: '- Q :: respuesta' })
+    r.events.create({ subjectId: b.id, kind: 'exam', title: 'Parcial', startsAt: new Date('2026-11-08T09:00:00') })
+
+    let deck = flashcardDeck(r, {}, now)
+    assert.equal(deck.total, 3)
+    assert.equal(deck.newCount, 3)
+    assert.equal(deck.due[0]!.noteId, nb.id)
+    assert.equal(deck.due[0]!.examInDays, 4)
+
+    reviewFlashcard(r, { id: deck.due[0]!.id, noteId: nb.id, grade: 'easy' }, now)
+    deck = flashcardDeck(r, {}, now)
+    assert.equal(deck.due.length, 2) // ya no toca hoy
+    const later = flashcardDeck(r, { subjectId: b.id }, new Date('2026-11-07T11:00:00'))
+    assert.equal(later.due.length, 1) // vuelve antes del parcial (3 días como mucho)
+    assert.throws(() => reviewFlashcard(r, { id: 'otra:xx', noteId: nb.id, grade: 'good' }, now))
   })
 })
 

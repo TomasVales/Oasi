@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation, useSearchParams } from 'react-router'
-import { BookOpenText, CalendarDays, ChartColumn, ChevronDown, type LucideIcon } from 'lucide-react'
+import { BookOpenText, CalendarDays, ChartColumn, ChevronDown, Layers, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useSubjects } from '@/hooks/useSubjects'
 import { useSubjectColor } from '@/hooks/useSubjectColor'
@@ -104,6 +104,7 @@ function SubjectChannels({ subjectId }: { subjectId: string }) {
         <Channel to={`/estudio?${q}`} icon={BookOpenText} label="Estudio" active={pathname === '/estudio' && !docParam && !noteParam} />
         <Channel to={`/calendario?${q}`} icon={CalendarDays} label="Fechas" active={pathname === '/calendario'} />
         <Channel to={`/estadisticas?${q}`} icon={ChartColumn} label="Progreso" active={pathname === '/estadisticas'} />
+        <Channel to={`/repaso?${q}`} icon={Layers} label="Repaso" active={pathname === '/repaso'} />
       </Category>
       <FileTree subjectId={subjectId} />
     </>

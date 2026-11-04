@@ -21,6 +21,7 @@ import {
   sessionFinishSchema,
   sessionLogSchema,
   sessionUpdateSchema,
+  flashcardReviewSchema,
   sessionStartSchema,
   anchorCreateSchema,
   documentImportSchema,
@@ -48,6 +49,7 @@ import type { GoogleService } from './google/service'
 import type { SecretStore } from './secrets'
 import type { BackgroundStore } from './backgrounds'
 import { toLocalDate } from '@shared/domain'
+import { flashcardDeck, reviewFlashcard } from './flashcards'
 
 type Schemas = readonly z.ZodType[]
 type Parsed<S extends Schemas> = { [I in keyof S]: z.output<S[I]> }
@@ -248,6 +250,10 @@ export function registerDataHandlers({ repos, library, ai, google, secrets, back
   handle(IpcChannel.SessionsHeartbeat, [idSchema, secondsSchema], (id, s) => repos.sessions.heartbeat(id, s))
   handle(IpcChannel.SessionsFinish, [idSchema, sessionFinishSchema], (id, data) => repos.sessions.finish(id, data))
   handle(IpcChannel.SessionsActive, [], () => repos.sessions.active() ?? null)
+  handle(IpcChannel.FlashcardsDeck, [idSchema.nullable()], (subjectId) => flashcardDeck(repos, { subjectId }))
+  handle(IpcChannel.FlashcardsReview, [flashcardReviewSchema], (input) => {
+    reviewFlashcard(repos, input)
+  })
   handle(IpcChannel.SessionsUpdate, [idSchema, sessionUpdateSchema], (id, patch) => {
     if (patch.subjectId) repos.subjects.get(patch.subjectId)
     if (repos.sessions.active()?.id === id && patch.activeSeconds !== undefined)

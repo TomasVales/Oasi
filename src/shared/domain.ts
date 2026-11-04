@@ -2,8 +2,35 @@
  * Enumeraciones del dominio. Viven en shared porque las usa tanto el esquema
  * de la DB (main) como la UI (renderer).
  */
-export const EVENT_KINDS = ['class', 'exam', 'assignment', 'other'] as const
+export const EVENT_KINDS = [
+  // Facultad
+  'class',
+  'exam',
+  'assignment',
+  'consultation',
+  'procedure',
+  'other',
+  // Fuera de la facultad
+  'work',
+  'personal',
+  'health',
+  'sport',
+  'social'
+] as const
 export type EventKind = (typeof EVENT_KINDS)[number]
+
+/** Eventos de la facultad (los demás son de la vida fuera de ella). */
+export const UNI_EVENT_KINDS: readonly EventKind[] = ['class', 'exam', 'assignment', 'consultation', 'procedure', 'other']
+export const LIFE_EVENT_KINDS: readonly EventKind[] = ['work', 'personal', 'health', 'sport', 'social']
+
+/** Hitos con fecha límite: alimentan la cuenta regresiva y el planificador. */
+export const isMilestoneKind = (k: EventKind) => k === 'exam' || k === 'assignment' || k === 'procedure' || k === 'other'
+
+/** Eventos que ocupan tiempo: el planificador no pone bloques de estudio encima. */
+export const isBusyKind = (k: EventKind) => !isMilestoneKind(k)
+
+export const SESSION_SOURCES = ['timer', 'manual'] as const
+export type SessionSource = (typeof SESSION_SOURCES)[number]
 
 /** Origen del evento: cargado a mano o sincronizado (solo lectura) desde Google Calendar. */
 export const EVENT_SOURCES = ['manual', 'google'] as const

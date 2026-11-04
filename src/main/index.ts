@@ -16,6 +16,8 @@ import { GOOGLE_ENDPOINTS, type GoogleEndpoints } from './google/oauth'
 import { SecretStore } from './secrets'
 import { BackgroundStore } from './backgrounds'
 import { Library } from './library'
+import { TimerTray } from './tray'
+import { z } from 'zod'
 
 const isDev = !app.isPackaged
 
@@ -143,6 +145,23 @@ app.whenReady().then(() => {
 
   createMainWindow()
   applyAppIcon(currentIcon())
+
+  // Contador en la barra de menú: lo alimenta el renderer mientras hay sesión.
+  const tray = new TimerTray(() => nativeImage.createFromPath(iconPath(currentIcon())))
+  const trayState = z
+    .object({
+      remaining: z.string().max(12),
+      label: z.string().max(40),
+      subject: z.string().max(100),
+      running: z.boolean(),
+      phase: z.enum(['focus', 'break', 'done'])
+    })
+    .nullable()
+  ipcMain.on(IpcChannel.TrayUpdate, (_e, raw: unknown) => {
+    const parsed = trayState.safeParse(raw)
+    if (parsed.success) tray.update(parsed.data)
+  })
+  app.on('will-quit', () => tray.destroy())
 
   const clientId = '1567335462433984572'
   const rpc = new Client({ transport: 'ipc' })

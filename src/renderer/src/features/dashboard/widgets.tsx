@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
-import { CalendarClock, Clock3, Flame, Grid3x3, Sparkles, Sun, Trophy, type LucideIcon } from 'lucide-react'
+import { CalendarClock, Clock3, Flame, Grid3x3, Layers, Sparkles, Sun, Target, Trophy, type LucideIcon } from 'lucide-react'
 import { toLocalDate } from '@shared/domain'
-import { addDays } from '@shared/dates'
+import { addDays, weekdayMon0 } from '@shared/dates'
 import type { DashboardWidget } from '@shared/settings'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/cn'
@@ -15,6 +15,7 @@ import { useSubjectColor } from '@/hooks/useSubjectColor'
 import { Heatmap } from '@/components/charts/Heatmap'
 import { KIND_LABEL, useNextEvent } from '@/components/layout/Countdown'
 import { PlanSection } from './PlanSection'
+import { ReviewWidget } from '@/features/review/ReviewWidget'
 
 export interface WidgetDef {
   title: string
@@ -130,6 +131,66 @@ function TodayWidget() {
   )
 }
 
+/** Horas de esta semana (lunes a hoy) contra la meta semanal de cada materia. */
+function WeeklyWidget() {
+  const today = toLocalDate()
+  const monday = addDays(today, -weekdayMon0(today))
+  const { data } = useQuery({ queryKey: queryKeys.statsRange(monday, today, null), queryFn: () => api.stats.range(monday, today) })
+  const { data: subjects = [] } = useSubjects()
+  const color = useSubjectColor()
+  const withGoal = subjects.filter((s) => s.weeklyGoalMinutes)
+  if (!withGoal.length)
+    return (
+      <p className="text-sm text-fg-subtle">
+        Poné una meta de horas por semana en{' '}
+        <Link to="/materias" className="font-medium text-accent hover:underline">
+          Materias
+        </Link>{' '}
+        y acá vas a ver cómo venís.
+      </p>
+    )
+  const daysLeft = 6 - weekdayMon0(today)
+  return (
+    <ul className="space-y-2.5">
+      {withGoal.map((s) => {
+        const seconds = data?.bySubject.find((b) => b.subjectId === s.id)?.seconds ?? 0
+        const goal = s.weeklyGoalMinutes! * 60
+        const pct = Math.min(1, seconds / goal)
+        const missing = Math.max(0, goal - seconds)
+        return (
+          <li key={s.id}>
+            <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
+              <span className="flex min-w-0 items-center gap-1.5 font-medium">
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color(s.color) }} />
+                <span className="truncate">{s.name}</span>
+              </span>
+              <span className="shrink-0 text-fg-muted tabular-nums">
+                {formatDuration(seconds)} / {formatDuration(goal)}
+              </span>
+            </div>
+            <div
+              className="h-2 overflow-hidden rounded-full bg-surface-2"
+              role="progressbar"
+              aria-label={`${s.name}: ${Math.round(pct * 100)} % de la meta semanal`}
+              aria-valuenow={Math.round(pct * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div className="h-full rounded-full transition-[width]" style={{ width: `${pct * 100}%`, background: pct >= 1 ? 'var(--success)' : color(s.color) }} />
+            </div>
+            {pct < 1 && (
+              <p className="mt-0.5 text-[11px] text-fg-subtle">
+                Faltan {formatDuration(missing)}
+                {daysLeft > 0 ? ` · ~${formatDuration(Math.ceil(missing / (daysLeft + 1) / 300) * 300)} por día` : ' · último día'}
+              </p>
+            )}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 function HeatmapWidget() {
   const end = toLocalDate()
   const year = useQuery({
@@ -145,5 +206,7 @@ export const WIDGETS: Record<DashboardWidget, WidgetDef> = {
   streak: { title: 'Racha', icon: Flame, span: 1, Body: StreakWidget },
   milestones: { title: 'Próximos hitos', icon: CalendarClock, span: 1, Body: MilestonesWidget },
   today: { title: 'Hoy', icon: Sun, span: 1, Body: TodayWidget },
+  weekly: { title: 'Meta semanal', icon: Target, span: 1, Body: WeeklyWidget },
+  review: { title: 'Repaso', icon: Layers, span: 1, Body: ReviewWidget },
   heatmap: { title: 'Actividad del último año', icon: Grid3x3, span: 3, Body: HeatmapWidget }
 }

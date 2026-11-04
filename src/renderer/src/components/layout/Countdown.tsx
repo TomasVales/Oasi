@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { CalendarClock, GraduationCap, NotebookPen, Presentation } from 'lucide-react'
 import type { CalendarEvent } from '@shared/models'
 import { cn } from '@/lib/cn'
 import { formatCountdown } from '@/lib/format'
@@ -8,8 +7,9 @@ import { useUpcomingEvents } from '@/hooks/useAppData'
 import { useSubjects } from '@/hooks/useSubjects'
 import { useSubjectColor } from '@/hooks/useSubjectColor'
 
-const KIND_ICON = { exam: GraduationCap, assignment: NotebookPen, class: Presentation, other: CalendarClock }
-export const KIND_LABEL = { exam: 'Parcial', assignment: 'Entrega', class: 'Clase', other: 'Evento' } as const
+import { KIND_LABEL, KIND_META } from '@/lib/eventKinds'
+
+export { KIND_LABEL }
 
 /** Próximo evento (clase, parcial o entrega) que todavía no empezó. */
 export function useNextEvent(now: Date): CalendarEvent | null {
@@ -32,7 +32,7 @@ export function CountdownPill() {
   const { data: subjects } = useSubjects()
   const color = useSubjectColor()
   if (!next) return null
-  const Icon = KIND_ICON[next.kind]
+  const Icon = KIND_META[next.kind].icon
   const subject = subjects?.find((s) => s.id === next.subjectId)
   const ms = next.startsAt.getTime() - now.getTime()
   const soon = ms < 86_400_000

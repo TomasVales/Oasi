@@ -9,6 +9,10 @@ export type NoteUpdate = Partial<Omit<NoteCreate, 'subjectId'>>
 
 export function notesRepo(db: Db) {
   return {
+    listAll(): Note[] {
+      return db.select().from(notes).all()
+    },
+
     listBySubject(subjectId: string): Note[] {
       return db.select().from(notes).where(eq(notes.subjectId, subjectId)).orderBy(desc(notes.updatedAt)).all()
     },

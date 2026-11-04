@@ -21,7 +21,7 @@ export interface GoogleSettings {
 }
 
 /** Widgets del dashboard de Inicio (el orden del array es el orden en pantalla). */
-export const DASHBOARD_WIDGETS = ['plan', 'countdown', 'streak', 'milestones', 'today', 'heatmap'] as const
+export const DASHBOARD_WIDGETS = ['plan', 'countdown', 'streak', 'milestones', 'today', 'weekly', 'review', 'heatmap'] as const
 export type DashboardWidget = (typeof DASHBOARD_WIDGETS)[number]
 
 export interface DashboardSettings {
@@ -70,6 +70,17 @@ export interface SoundscapeSettings {
   volume: number
 }
 
+export const CHIME_SOUNDS = ['bell', 'soft', 'digital'] as const
+export type ChimeSound = (typeof CHIME_SOUNDS)[number]
+
+/** Sonido al terminar el foco o el descanso. */
+export interface ChimeSettings {
+  enabled: boolean
+  sound: ChimeSound
+  /** 0–1 */
+  volume: number
+}
+
 export interface AppSettings {
   theme: ThemeName
   pomodoro: {
@@ -85,6 +96,9 @@ export interface AppSettings {
   profile: { name: string }
   idle: IdleSettings
   focusMode: FocusModeSettings
+  chime: ChimeSettings
+  /** Contador en la barra de menú (macOS) / bandeja del sistema mientras hay sesión. */
+  menuBarTimer: boolean
   dashboard: DashboardSettings
   appIcon: AppIconVariant
   soundscape: SoundscapeSettings
@@ -102,6 +116,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   profile: { name: '' },
   idle: { enabled: true, minutes: 10 },
   focusMode: { auto: true, seconds: 90 },
+  chime: { enabled: true, sound: 'bell', volume: 0.6 },
+  menuBarTimer: true,
   dashboard: { order: [...DASHBOARD_WIDGETS], hidden: [] },
   appIcon: 'clasico',
   soundscape: { enabled: true, autoplay: true, pauseOnBreak: true, sound: 'rain', volume: 0.5 },

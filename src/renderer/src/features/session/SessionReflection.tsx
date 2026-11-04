@@ -48,6 +48,12 @@ function ReflectionDialog({ finished, onClose }: { finished: FinishedSession; on
         focusScore: score,
         ...(finished.documentId ? { pagesTo: page === '' ? null : pageNum } : {})
       })
+      // La página contestada también es "hasta dónde leíste" el PDF (si es más de lo registrado).
+      if (finished.documentId && page !== '' && doc.data && pageNum > doc.data.maxPageRead) {
+        await api.documents.trackPage(finished.documentId, pageNum)
+        void qc.invalidateQueries({ queryKey: queryKeys.documents(doc.data.subjectId) })
+        void qc.invalidateQueries({ queryKey: queryKeys.plan })
+      }
       void qc.invalidateQueries({ queryKey: queryKeys.stats })
       onClose()
     } catch (err) {

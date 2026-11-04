@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ChartColumn,
   Home,
+  Layers,
   Library,
   Settings,
   type LucideIcon
@@ -24,7 +25,8 @@ export const HOME_NAV: NavItem[] = [
   { path: '/calendario', label: 'Calendario', icon: CalendarDays, topic: 'Parciales, entregas y clases', shortcut: '2' },
   { path: '/estudio', label: 'Estudio', icon: BookOpenText, topic: 'PDF y apuntes lado a lado', shortcut: '3' },
   { path: '/materias', label: 'Materias', icon: Library, topic: 'Tus materias del cuatrimestre', shortcut: '4' },
-  { path: '/estadisticas', label: 'Estadísticas', icon: ChartColumn, topic: 'Horas invertidas por materia', shortcut: '5' }
+  { path: '/estadisticas', label: 'Estadísticas', icon: ChartColumn, topic: 'Horas invertidas por materia', shortcut: '5' },
+  { path: '/repaso', label: 'Repaso', icon: Layers, topic: 'Tarjetas de tus apuntes, cuando toca repasarlas', shortcut: '6' }
 ]
 
 export const SETTINGS_NAV: NavItem = { path: '/ajustes', label: 'Ajustes', icon: Settings, topic: 'Apariencia y datos', shortcut: ',' }

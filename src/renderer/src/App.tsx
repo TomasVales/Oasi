@@ -13,6 +13,7 @@ import { StatsPage } from '@/pages/StatsPage'
 import { WorkspacePage } from '@/features/workspace/WorkspacePage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { SubjectsPage } from '@/pages/SubjectsPage'
+import { ReviewPage } from '@/features/review/ReviewPage'
 
 /** HashRouter: la app se carga desde file:// en producción, donde no hay History API con rutas reales. */
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
               <Route path="estudio" element={<WorkspacePage />} />
               <Route path="materias" element={<SubjectsPage />} />
               <Route path="estadisticas" element={<StatsPage />} />
+              <Route path="repaso" element={<ReviewPage />} />
               <Route path="ajustes" element={<SettingsPage />} />
             </Route>
           </Routes>

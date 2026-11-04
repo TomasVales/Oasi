@@ -4,6 +4,7 @@ import { checkInsRepo } from './checkIns'
 import { documentsRepo } from './documents'
 import { eventsRepo } from './events'
 import { foldersRepo } from './folders'
+import { flashcardsRepo } from './flashcards'
 import { notesRepo } from './notes'
 import { plansRepo } from './plans'
 import { sessionsRepo } from './sessions'
@@ -15,6 +16,7 @@ export function createRepositories(db: Db) {
     subjects: subjectsRepo(db),
     events: eventsRepo(db),
     folders: foldersRepo(db),
+    flashcards: flashcardsRepo(db),
     documents: documentsRepo(db),
     notes: notesRepo(db),
     anchors: anchorsRepo(db),

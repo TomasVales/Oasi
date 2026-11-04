@@ -1,12 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Minus, Plus } from 'lucide-react'
-import type { AppSettings } from '@shared/settings'
+import { Minus, Plus, Volume2 } from 'lucide-react'
+import { CHIME_SOUNDS, type AppSettings, type ChimeSound } from '@shared/settings'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import { queryKeys } from '@/lib/queryClient'
 import { useSettings } from '@/hooks/useAppData'
 import { Card } from '@/components/ui/Card'
 import { TIMER_SHORTCUTS } from '@/features/focus/FocusOverlay'
+import { playChime } from '@/features/sound/chime'
 
 const PRESETS = [
   { label: 'Clásico 25/5', focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, cyclesBeforeLongBreak: 4 },
@@ -22,7 +23,9 @@ const FOCUS_DELAYS = [
   { s: 300, label: '5 min' }
 ]
 
-type Key = 'pomodoro' | 'streakMinMinutes' | 'focusMode'
+const CHIME_LABEL: Record<ChimeSound, string> = { bell: 'Campana', soft: 'Suave', digital: 'Digital' }
+
+type Key = 'pomodoro' | 'streakMinMinutes' | 'focusMode' | 'chime' | 'menuBarTimer'
 
 /** Duraciones del pomodoro, meta diaria de la racha y vista de foco. */
 export function TimerSettingsSection() {
@@ -36,6 +39,7 @@ export function TimerSettingsSection() {
   }
   const p = settings.pomodoro
   const focus = settings.focusMode
+  const chime = settings.chime
   const setP = (patch: Partial<typeof p>) => save('pomodoro', { ...p, ...patch })
 
   return (
@@ -91,6 +95,64 @@ export function TimerSettingsSection() {
             onChange={(v) => save('streakMinMinutes', v)}
           />
         </div>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-line pt-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="accent-[var(--accent)]"
+              checked={chime.enabled}
+              onChange={(e) => save('chime', { ...chime, enabled: e.target.checked })}
+            />
+            Sonar al terminar el foco o el descanso
+          </label>
+          <div role="radiogroup" aria-label="Sonido" className={cn('flex rounded-card bg-surface-2 p-1', !chime.enabled && 'opacity-50')}>
+            {CHIME_SOUNDS.map((c) => (
+              <button
+                key={c}
+                role="radio"
+                aria-checked={chime.sound === c}
+                disabled={!chime.enabled}
+                onClick={() => {
+                  save('chime', { ...chime, sound: c })
+                  playChime(c, chime.volume, 'down')
+                }}
+                className={cn(
+                  'h-7 rounded-[calc(var(--radius)-2px)] px-2.5 text-xs font-medium',
+                  chime.sound === c ? 'bg-surface text-fg shadow-card arcade:bg-accent arcade:text-accent-fg' : 'text-fg-muted hover:text-fg'
+                )}
+              >
+                {CHIME_LABEL[c]}
+              </button>
+            ))}
+          </div>
+          <label className={cn('flex items-center gap-2 text-xs text-fg-muted', !chime.enabled && 'opacity-50')}>
+            <Volume2 size={14} />
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={chime.volume}
+              disabled={!chime.enabled}
+              aria-label="Volumen del aviso"
+              onChange={(e) => save('chime', { ...chime, volume: Number(e.target.value) })}
+              onPointerUp={() => playChime(chime.sound, chime.volume, 'up')}
+              className="w-28 accent-[var(--accent)]"
+            />
+          </label>
+        </div>
+
+        <label className="flex items-center gap-2 border-t border-line pt-3 text-sm">
+          <input
+            type="checkbox"
+            className="accent-[var(--accent)]"
+            checked={settings.menuBarTimer}
+            onChange={(e) => save('menuBarTimer', e.target.checked)}
+          />
+          Mostrar el contador en la barra de menú
+          <span className="text-xs text-fg-subtle">(arriba, junto al reloj; con un menú para pausar o saltar)</span>
+        </label>
 
         <div className="space-y-2 border-t border-line pt-3">
           <div className="flex flex-wrap items-center gap-3">

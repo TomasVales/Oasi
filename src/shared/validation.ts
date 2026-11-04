@@ -4,7 +4,8 @@
  */
 import { z } from 'zod'
 import { ANCHOR_KINDS, ENERGY_LEVELS, EVENT_KINDS } from './domain'
-import { AI_PROVIDERS, DASHBOARD_WIDGETS, SOUNDSCAPES, THEMES } from './settings'
+import { GRADES } from './flashcards'
+import { AI_PROVIDERS, CHIME_SOUNDS, DASHBOARD_WIDGETS, SOUNDSCAPES, THEMES } from './settings'
 
 export const idSchema = z.uuid()
 
@@ -15,7 +16,8 @@ export const subjectCreateSchema = z.object({
   name: z.string().trim().min(1).max(80),
   code: z.string().trim().max(20).nullish(),
   color: hexColor.optional(),
-  difficulty: level.optional()
+  difficulty: level.optional(),
+  weeklyGoalMinutes: z.number().int().min(15).max(80 * 60).nullish()
 })
 export type SubjectCreateInput = z.infer<typeof subjectCreateSchema>
 
@@ -84,6 +86,8 @@ export const settingsSchemas = {
   google: z.never(),
   profile: z.object({ name: z.string().trim().max(60) }),
   idle: z.object({ enabled: z.boolean(), minutes: z.number().int().min(1).max(120) }),
+  menuBarTimer: z.boolean(),
+  chime: z.object({ enabled: z.boolean(), sound: z.enum(CHIME_SOUNDS), volume: z.number().min(0).max(1) }),
   focusMode: z.object({ auto: z.boolean(), seconds: z.number().int().min(10).max(1800) }),
   appIcon: z.enum(['clasico', 'noche', 'neon']),
   onboarding: z.object({ completedAt: z.number().int().positive().nullable() }),
@@ -181,6 +185,13 @@ export const sessionUpdateSchema = z
     pagesTo: pageSchema.nullable()
   })
   .partial()
+export const flashcardReviewSchema = z.object({
+  id: z.string().min(3).max(120),
+  noteId: idSchema,
+  grade: z.enum(GRADES)
+})
+export type FlashcardReviewInput = z.infer<typeof flashcardReviewSchema>
+
 export type SessionUpdateInput = z.infer<typeof sessionUpdateSchema>
 
 export const localDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)

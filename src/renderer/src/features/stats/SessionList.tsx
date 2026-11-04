@@ -163,6 +163,9 @@ function Row({
       <span className="flex min-w-0 flex-1 items-center gap-2">
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: subject ? color(subject.color) : 'var(--fg-subtle)' }} />
         <span className="truncate">{subject?.name ?? 'Sin materia'}</span>
+        {s.source === 'manual' && (
+          <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-px text-[10px] text-fg-subtle">cargada a mano</span>
+        )}
       </span>
       {level && (
         <span title={`Foco: ${level.label}`} aria-label={`Foco: ${level.label}`}>

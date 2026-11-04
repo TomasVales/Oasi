@@ -102,7 +102,8 @@ export function sessionsRepo(db: Db) {
           endedAt: input.endedAt,
           localDate: toLocalDate(startedAt),
           plannedSeconds: input.minutes * 60,
-          activeSeconds: input.minutes * 60
+          activeSeconds: input.minutes * 60,
+          source: 'manual'
         })
         .returning()
         .get()

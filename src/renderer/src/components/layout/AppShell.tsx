@@ -8,6 +8,7 @@ import { page } from '@/lib/motion'
 import { AwayScreen } from '@/features/away/AwayScreen'
 import { FocusOverlay } from '@/features/focus/FocusOverlay'
 import { SessionReflection } from '@/features/session/SessionReflection'
+import { TrayBridge } from '@/features/session/TrayBridge'
 import { BackgroundLayer } from '@/features/background/BackgroundLayer'
 import { Onboarding } from '@/features/onboarding/Onboarding'
 import { AnimatePresence } from 'framer-motion'
@@ -21,7 +22,7 @@ import { ChannelSidebar } from './ChannelSidebar'
 import { CountdownPill } from './Countdown'
 import { ServerRail } from './ServerRail'
 
-const SUBJECT_SECTION: Record<string, string> = { '/estudio': 'Estudio', '/calendario': 'Fechas', '/estadisticas': 'Progreso' }
+const SUBJECT_SECTION: Record<string, string> = { '/estudio': 'Estudio', '/calendario': 'Fechas', '/estadisticas': 'Progreso', '/repaso': 'Repaso' }
 
 export function AppShell() {
   const [hidden, setHidden] = usePersistentState('ui.channelsHidden', false)
@@ -83,6 +84,7 @@ export function AppShell() {
       {!needsOnboarding && settings && <CheckInModal />}
       <FocusOverlay />
       <SessionReflection />
+      <TrayBridge />
       <AwayScreen />
       <AnimatePresence>{needsOnboarding && <Onboarding key="onboarding" />}</AnimatePresence>
     </div>

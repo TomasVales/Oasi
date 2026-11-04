@@ -1,4 +1,4 @@
-import { toLocalDate, type EnergyLevel } from '@shared/domain'
+import { isBusyKind, isMilestoneKind, toLocalDate, type EnergyLevel } from '@shared/domain'
 import { addDays } from '@shared/dates'
 import { planStudy, type PlanResult } from '@shared/planner'
 import { debtBySubject, evaluatePlan, fromSnapshotBlock, toSnapshotBlock, type BlockProgress } from '@shared/planProgress'
@@ -47,7 +47,7 @@ export function buildPlan(repos: Repositories, req: PlanRequest = {}, realNow = 
     urgentSubjectId,
     subjects: repos.subjects.list().map((s) => ({ id: s.id, name: s.name, difficulty: s.difficulty })),
     milestones: events
-      .filter((e) => e.kind !== 'class' && !e.completedAt)
+      .filter((e) => isMilestoneKind(e.kind) && !e.completedAt)
       .map((e) => ({ id: e.id, subjectId: e.subjectId, kind: e.kind, title: e.title, startsAt: e.startsAt, weight: e.weight })),
     documents: repos.documents.listAll().map((d) => ({
       id: d.id,
@@ -58,7 +58,8 @@ export function buildPlan(repos: Repositories, req: PlanRequest = {}, realNow = 
       lastOpenedAt: d.lastOpenedAt
     })),
     busy: events
-      .filter((e) => e.kind === 'class' && e.startsAt <= endOfDay)
+      // Clases, consultas, trabajo, turnos, deporte…: ocupan su horario (los de todo el día no).
+      .filter((e) => isBusyKind(e.kind) && !e.allDay && e.startsAt <= endOfDay)
       .map((e) => ({
         startsAt: e.startsAt,
         endsAt: e.endsAt ?? new Date(e.startsAt.getTime() + 2 * 3_600_000),

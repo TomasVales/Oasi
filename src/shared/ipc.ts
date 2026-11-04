@@ -2,7 +2,7 @@
  * Contrato IPC entre el proceso main y el renderer.
  * Toda comunicación pasa por aquí: el renderer nunca toca Node directamente.
  */
-import type { CalendarEvent, CheckIn, DocumentRecord, Folder, Note, PdfAnchor, StudySession, Subject } from './models'
+import type { CalendarEvent, CheckIn, DocumentRecord, FlashcardDeck, Folder, Note, PdfAnchor, StudySession, Subject } from './models'
 import type { EnergyLevel, LocalDate } from './domain'
 import type { PlanResult } from './planner'
 import type { BlockProgress } from './planProgress'
@@ -15,6 +15,7 @@ import type {
   SessionFinishInput,
   SessionLogInput,
   SessionUpdateInput,
+  FlashcardReviewInput,
   SessionStartInput,
   EventCreateInput,
   NoteCreateInput,
@@ -29,6 +30,7 @@ import type {
 
 export const IpcChannel = {
   AppInfo: 'app:info',
+  TrayUpdate: 'tray:update',
 
   SubjectsList: 'subjects:list',
   SubjectsCreate: 'subjects:create',
@@ -87,6 +89,8 @@ export const IpcChannel = {
   SessionsUpdate: 'sessions:update',
   SessionsRemove: 'sessions:remove',
   SessionsList: 'sessions:list',
+  FlashcardsDeck: 'flashcards:deck',
+  FlashcardsReview: 'flashcards:review',
 
   StatsRange: 'stats:range',
   StatsStreak: 'stats:streak',
@@ -150,8 +154,20 @@ export interface PlanResponse extends PlanResult {
 export const PushChannel = {
   AiEvent: 'push:ai',
   DataChanged: 'push:dataChanged',
-  Away: 'push:away'
+  Away: 'push:away',
+  TrayCommand: 'push:trayCommand'
 } as const
+
+/** Estado del cronómetro para la barra de menú (null = sin sesión: se quita). */
+export interface TrayState {
+  remaining: string
+  label: string
+  subject: string
+  running: boolean
+  phase: 'focus' | 'break' | 'done'
+}
+
+export type TrayCommand = 'toggle' | 'skip' | 'stop' | 'focus' | 'plus5'
 
 export interface AwayEvent {
   /** Segundos de inactividad al detectarse (se descuentan del cronómetro). */
@@ -289,6 +305,11 @@ export interface StudentOSApi {
     /** Sesiones cerradas entre dos días locales (inclusive), más recientes primero. */
     list: (from: LocalDate, to: LocalDate) => Promise<StudySession[]>
   }
+  flashcards: {
+    /** Tarjetas de los apuntes (opcionalmente de una materia) y cuáles tocan ahora. */
+    deck: (subjectId?: string | null) => Promise<FlashcardDeck>
+    review: (input: FlashcardReviewInput) => Promise<void>
+  }
   stats: {
     /** Totales por día y por materia entre dos días locales (inclusive). */
     range: (from: LocalDate, to: LocalDate, subjectId?: string | null) => Promise<StatsRange>
@@ -324,6 +345,11 @@ export interface StudentOSApi {
   onDataChanged: (cb: (scope: DataScope) => void) => () => void
   /** Modo ausente: el usuario dejó de usar la computadora o bloqueó la pantalla. */
   onAway: (cb: (e: AwayEvent) => void) => () => void
+  /** Contador en la barra de menú. */
+  tray: {
+    update: (state: TrayState | null) => void
+    onCommand: (cb: (cmd: TrayCommand) => void) => () => void
+  }
   settings: {
     getAll: () => Promise<AppSettings>
     set: <K extends SettingKey>(key: K, value: AppSettings[K]) => Promise<void>

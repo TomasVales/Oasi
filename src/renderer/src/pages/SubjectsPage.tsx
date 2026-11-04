@@ -216,6 +216,7 @@ function SubjectForm({
   const [color, setColor] = useState(initial?.color ?? defaultColor ?? SUBJECT_PALETTE[0].light)
   const resolve = useSubjectColor()
   const [difficulty, setDifficulty] = useState(initial?.difficulty ?? 3)
+  const [goal, setGoal] = useState<number | null>(initial?.weeklyGoalMinutes ?? null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -224,7 +225,7 @@ function SubjectForm({
     setSaving(true)
     setError(null)
     try {
-      await onSubmit({ name, code: code.trim() || null, color, difficulty })
+      await onSubmit({ name, code: code.trim() || null, color, difficulty, weeklyGoalMinutes: goal })
     } catch (err) {
       setError(ipcErrorMessage(err))
     } finally {
@@ -280,6 +281,42 @@ function SubjectForm({
               {i}
             </button>
           ))}
+        </div>
+      </Field>
+
+      <Field group label="Meta semanal" hint="Cuántas horas por semana querés dedicarle. Se ve en Inicio con una barra de progreso.">
+        <div className="flex flex-wrap items-center gap-1">
+          {[null, 120, 240, 360, 480].map((m) => (
+            <button
+              key={m ?? 'none'}
+              type="button"
+              aria-pressed={goal === m}
+              onClick={() => setGoal(m)}
+              className={cn(
+                'h-8 rounded-card border px-3 text-xs font-medium transition-colors',
+                goal === m ? 'border-accent bg-accent-soft text-accent' : 'border-line text-fg-muted hover:bg-surface-2'
+              )}
+            >
+              {m === null ? 'Sin meta' : `${m / 60} h`}
+            </button>
+          ))}
+          <label className="ml-1 flex items-center gap-1 text-xs text-fg-muted">
+            <input
+              type="number"
+              min={0.5}
+              max={80}
+              step={0.5}
+              aria-label="Horas por semana"
+              value={goal === null ? '' : goal / 60}
+              placeholder="—"
+              onChange={(e) => {
+                const h = Number(e.target.value)
+                setGoal(e.target.value === '' || !(h > 0) ? null : Math.min(80 * 60, Math.max(15, Math.round(h * 60))))
+              }}
+              className="h-8 w-16 rounded-card border border-line bg-canvas px-2 text-right text-sm tabular-nums focus:border-accent focus:outline-none"
+            />
+            h
+          </label>
         </div>
       </Field>
 

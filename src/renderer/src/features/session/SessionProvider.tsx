@@ -15,6 +15,7 @@ import {
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/queryClient'
 import { useSettings } from '@/hooks/useAppData'
+import { playChime } from '@/features/sound/chime'
 
 export interface StartOptions {
   subjectId: string | null
@@ -83,6 +84,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   sessionRef.current = session
 
   const pomodoro = settings?.pomodoro ?? DEFAULT_SETTINGS.pomodoro
+  const chimeRef = useRef(settings?.chime ?? DEFAULT_SETTINGS.chime)
+  chimeRef.current = settings?.chime ?? DEFAULT_SETTINGS.chime
 
   const refreshStats = useCallback(() => {
     void qc.invalidateQueries({ queryKey: queryKeys.stats })
@@ -118,6 +121,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const { state, finished } = tickTimer(current.timer, t)
       if (state === current.timer) return
       setSession({ ...current, timer: state })
+      const chime = chimeRef.current
+      if (finished && chime.enabled) playChime(chime.sound, chime.volume, finished === 'focus' ? 'down' : 'up')
       if (finished === 'focus' && state.phase === 'break')
         notify('Descanso', `Buen trabajo. Descansá ${Math.round(state.phaseDurationMs / 60_000)} minutos.`)
       if (finished === 'focus' && state.phase === 'done') notify('Bloque completado', 'Terminaste el bloque planificado.')
