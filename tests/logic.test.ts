@@ -3,6 +3,7 @@ import { describe, it } from 'node:test'
 import { addDays, diffDays, weekdayMon0 } from '../src/shared/dates'
 import { cardId, NEW_CARD, parseFlashcards, scheduleReview } from '../src/shared/flashcards'
 import { summarizeWeek, weekToSummarize } from '../src/shared/weeklySummary'
+import { buildPresence, DEFAULT_DISCORD } from '../src/shared/discord'
 import { buildHeatmap, heatLevel } from '../src/shared/heatmap'
 import { blockMinutes, planStudy, type PlannerInput } from '../src/shared/planner'
 import { computeStreaks } from '../src/shared/streaks'
@@ -278,5 +279,59 @@ describe('resumen semanal', () => {
     assert.deepEqual(s.subjects.map((r) => [r.name, r.seconds]), [['AM2', 9000], ['Sin materia', 1800], ['Física', 0]])
     assert.equal(s.goalsMet, 1)
     assert.equal(s.goalsTotal, 2)
+  })
+})
+
+describe('presencia en Discord', () => {
+  const base = {
+    settings: DEFAULT_DISCORD,
+    view: { section: 'home' as const, subjectName: null, docTitle: null, noteTitle: null },
+    streak: 5,
+    todaySeconds: 4500,
+    dueCards: 0,
+    appStartedAt: 1000
+  }
+  const session = {
+    subjectName: 'Análisis II',
+    modeLabel: null,
+    phase: 'focus' as const,
+    running: true,
+    phaseEndsAt: 99_000,
+    focusedSeconds: 1500,
+    cycle: 2,
+    focusMinutes: 50,
+    plannedMinutes: 150
+  }
+
+  it('en foco: materia, pomodoro, cuenta regresiva y racha en el tooltip', () => {
+    const p = buildPresence({ ...base, session })
+    assert.equal(p.details, '🍅 Estudiando Análisis II')
+    assert.equal(p.state, 'Pomodoro 2 de 3 · 25 min de foco')
+    assert.equal(p.endTimestamp, 99_000)
+    assert.equal(p.largeImageText, 'Oasi · 🔥 5 días de racha · 1 h 15 min hoy')
+  })
+
+  it('respeta la privacidad: sin materia, sin títulos, sin stats', () => {
+    const settings = { enabled: true, showSubject: false, showTitles: false, showStats: false }
+    const p = buildPresence({ ...base, settings, session, view: { section: 'study', subjectName: 'X', docTitle: 'Secreto.pdf', noteTitle: null } })
+    assert.equal(p.details, '🍅 Estudiando')
+    assert.ok(!p.state.includes('Secreto'))
+    assert.equal(p.largeImageText, 'Oasi')
+  })
+
+  it('pausa sin contador; descanso con contador; fuera de sesión según la sección', () => {
+    const paused = buildPresence({ ...base, session: { ...session, running: false } })
+    assert.equal(paused.details, '⏸ En pausa · Análisis II')
+    assert.equal(paused.endTimestamp, undefined)
+    assert.equal(buildPresence({ ...base, session: { ...session, phase: 'break' } }).details, '☕ Descansando · Análisis II')
+    const reading = buildPresence({
+      ...base,
+      settings: { ...DEFAULT_DISCORD, showTitles: true },
+      session: null,
+      view: { section: 'study', subjectName: 'Física', docTitle: 'Cinemática', noteTitle: null }
+    })
+    assert.equal(reading.details, '📚 En Física')
+    assert.equal(reading.state, '📖 Leyendo «Cinemática»')
+    assert.equal(reading.startTimestamp, 1000)
   })
 })

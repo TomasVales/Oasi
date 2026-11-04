@@ -1,5 +1,4 @@
 import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, safeStorage, shell } from 'electron'
-import { Client } from 'discord-rpc'
 import { APP_NAME } from '@shared/brand'
 import { isIconVariant, type IconVariant } from '@shared/pixelIcon'
 import { join } from 'node:path'
@@ -16,8 +15,8 @@ import { GOOGLE_ENDPOINTS, type GoogleEndpoints } from './google/oauth'
 import { SecretStore } from './secrets'
 import { BackgroundStore } from './backgrounds'
 import { Library } from './library'
-import { TimerTray } from './tray'
 import { MiniTimer } from './miniTimer'
+import { DiscordPresence } from './discord'
 import type { TrayState } from '@shared/ipc'
 import { z } from 'zod'
 
@@ -54,13 +53,11 @@ function applyAppIcon(variant: IconVariant) {
 let dbHandle: DbHandle | null = null
 let repos: Repositories
 let mainWin: BrowserWindow | null = null
-let tray: TimerTray | null = null
 let mini: MiniTimer | null = null
 /** Último estado del cronómetro que mandó el renderer (para reaplicar al cambiar ajustes). */
 let timerState: TrayState | null = null
 
 function applyTimerState() {
-  tray?.update(repos.settings.get('menuBarTimer') ? timerState : null)
   mini?.update(timerState)
 }
 
@@ -116,7 +113,7 @@ function initDatabase(): { dbPath: string } {
         for (const w of BrowserWindow.getAllWindows()) if (!mini?.isMini(w)) w.setBackgroundColor(THEME_META[value].windowBackground)
         mini?.refresh()
       }
-      if (key === 'menuBarTimer' || key === 'miniTimer') applyTimerState()
+      if (key === 'miniTimer') applyTimerState()
       if (key === 'appIcon' && isIconVariant(value)) applyAppIcon(value)
     }
   })
@@ -185,8 +182,7 @@ app.whenReady().then(() => {
   createMainWindow()
   applyAppIcon(currentIcon())
 
-  // Contador en la barra de menú: lo alimenta el renderer mientras hay sesión.
-  tray = new TimerTray(() => nativeImage.createFromPath(iconPath(currentIcon())), showMainWindow)
+  // Estado del cronómetro: lo manda el renderer mientras hay sesión (alimenta la ventanita).
   const trayState = z
     .object({
       remaining: z.string().max(12),
@@ -214,25 +210,28 @@ app.whenReady().then(() => {
     if (cmd !== 'open') mainWin?.webContents.send(PushChannel.TrayCommand, cmd)
   })
   app.on('will-quit', () => {
-    tray?.destroy()
     mini?.destroy()
   })
 
-  const clientId = '1567335462433984572'
-  const rpc = new Client({ transport: 'ipc' })
-
-  rpc.on('ready', () => {
-    rpc.setActivity({
-      details: 'Organizando el cuatrimestre',
-      state: 'En el planificador',
-      startTimestamp: new Date(),
-      largeImageKey: 'logo',
-      largeImageText: 'Oasi',
-      instance: false,
+  // Discord: lo que estás haciendo en Oasi (el renderer arma la actividad según la pantalla y el cronómetro).
+  const discord = new DiscordPresence()
+  discord.start()
+  const discordActivity = z
+    .object({
+      details: z.string().min(1).max(128),
+      state: z.string().min(1).max(128),
+      startTimestamp: z.number().int().positive().optional(),
+      endTimestamp: z.number().int().positive().optional(),
+      largeImageKey: z.string().max(32),
+      largeImageText: z.string().max(128)
     })
+    .nullable()
+  ipcMain.on(IpcChannel.DiscordUpdate, (e, raw: unknown) => {
+    if (e.sender !== mainWin?.webContents) return
+    const parsed = discordActivity.safeParse(raw)
+    if (parsed.success) discord.update(parsed.data)
   })
-
-  rpc.login({ clientId }).catch(console.error)
+  app.on('will-quit', () => discord.stop())
 
   app.on('activate', () => {
     if (!mainWin || mainWin.isDestroyed()) createMainWindow()

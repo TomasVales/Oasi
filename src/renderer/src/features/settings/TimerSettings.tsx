@@ -25,7 +25,7 @@ const FOCUS_DELAYS = [
 
 const CHIME_LABEL: Record<ChimeSound, string> = { bell: 'Campana', soft: 'Suave', digital: 'Digital' }
 
-type Key = 'pomodoro' | 'streakMinMinutes' | 'focusMode' | 'chime' | 'menuBarTimer' | 'miniTimer'
+type Key = 'pomodoro' | 'streakMinMinutes' | 'focusMode' | 'chime' | 'miniTimer'
 
 /** Duraciones del pomodoro, meta diaria de la racha y vista de foco. */
 export function TimerSettingsSection() {
@@ -144,16 +144,6 @@ export function TimerSettingsSection() {
         </div>
 
         <label className="flex items-center gap-2 border-t border-line pt-3 text-sm">
-          <input
-            type="checkbox"
-            className="accent-[var(--accent)]"
-            checked={settings.menuBarTimer}
-            onChange={(e) => save('menuBarTimer', e.target.checked)}
-          />
-          Mostrar el contador en la barra de menú
-          <span className="text-xs text-fg-subtle">(arriba, junto al reloj; con un menú para pausar o saltar)</span>
-        </label>
-        <label className="-mt-2 flex items-center gap-2 text-sm">
           <input
             type="checkbox"
             className="accent-[var(--accent)]"

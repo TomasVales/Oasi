@@ -1,3 +1,5 @@
+import { DEFAULT_DISCORD, type DiscordSettings } from './discord'
+
 export const THEMES = ['zen', 'focus', 'arcade'] as const
 export type ThemeName = (typeof THEMES)[number]
 
@@ -97,10 +99,10 @@ export interface AppSettings {
   idle: IdleSettings
   focusMode: FocusModeSettings
   chime: ChimeSettings
-  /** Contador en la barra de menú (macOS) / bandeja del sistema mientras hay sesión. */
-  menuBarTimer: boolean
   /** Ventanita flotante con el contador cuando estás en otra app. */
   miniTimer: boolean
+  /** Qué se muestra en tu perfil de Discord. */
+  discord: DiscordSettings
   /** Resumen de la semana: se abre solo una vez por semana (lastShown = lunes de la última mostrada). */
   weeklySummary: { auto: boolean; lastShown: string | null }
   dashboard: DashboardSettings
@@ -121,8 +123,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   idle: { enabled: true, minutes: 10 },
   focusMode: { auto: true, seconds: 90 },
   chime: { enabled: true, sound: 'bell', volume: 0.6 },
-  menuBarTimer: true,
   miniTimer: true,
+  discord: DEFAULT_DISCORD,
   weeklySummary: { auto: true, lastShown: null },
   dashboard: { order: [...DASHBOARD_WIDGETS], hidden: [] },
   appIcon: 'clasico',

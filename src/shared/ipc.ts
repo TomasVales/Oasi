@@ -9,6 +9,7 @@ import type { BlockProgress } from './planProgress'
 import type { DayTotal, StreakInfo } from './streaks'
 import type { AiRunInput, BackgroundLookInput, FolderCreateInput, FolderUpdateInput, GoogleCredentialsInput } from './validation'
 import type { BackgroundSettings } from './settings'
+import type { PresenceActivity } from './discord'
 import type { AppSettings, SettingKey, ThemeName } from './settings'
 import type {
   AnchorCreateInput,
@@ -32,6 +33,7 @@ export const IpcChannel = {
   AppInfo: 'app:info',
   TrayUpdate: 'tray:update',
   MiniCommand: 'mini:command',
+  DiscordUpdate: 'discord:update',
 
   SubjectsList: 'subjects:list',
   SubjectsCreate: 'subjects:create',
@@ -160,7 +162,7 @@ export const PushChannel = {
   MiniState: 'push:miniState'
 } as const
 
-/** Estado del cronómetro para la barra de menú (null = sin sesión: se quita). */
+/** Estado del cronómetro para la ventanita flotante (null = sin sesión: se esconde). */
 export interface TrayState {
   remaining: string
   label: string
@@ -357,10 +359,14 @@ export interface StudentOSApi {
   onDataChanged: (cb: (scope: DataScope) => void) => () => void
   /** Modo ausente: el usuario dejó de usar la computadora o bloqueó la pantalla. */
   onAway: (cb: (e: AwayEvent) => void) => () => void
-  /** Contador en la barra de menú. */
+  /** Estado del cronómetro hacia el main, y comandos de vuelta (desde la ventanita). */
   tray: {
     update: (state: TrayState | null) => void
     onCommand: (cb: (cmd: TrayCommand) => void) => () => void
+  }
+  /** Actividad en Discord (null = borrarla). */
+  discord: {
+    update: (activity: PresenceActivity | null) => void
   }
   /** Ventanita flotante del contador. */
   mini: {

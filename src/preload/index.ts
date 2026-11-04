@@ -161,6 +161,9 @@ const api: StudentOSApi = {
       return () => ipcRenderer.removeListener(PushChannel.TrayCommand, listener)
     }
   },
+  discord: {
+    update: (activity) => ipcRenderer.send(C.DiscordUpdate, activity)
+  },
   mini: {
     onState: (cb) => {
       const listener = (_e: Electron.IpcRendererEvent, s: MiniState) => cb(s)

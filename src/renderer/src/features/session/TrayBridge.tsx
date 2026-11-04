@@ -7,7 +7,7 @@ import { openFocusMode } from '@/features/focus/FocusOverlay'
 import { useSession } from './SessionProvider'
 
 /**
- * Manda el estado del cronómetro al proceso main (barra de menú y ventanita flotante; cada
+ * Manda el estado del cronómetro al proceso main (ventanita flotante y Discord; cada
  * una se muestra según su ajuste) y ejecuta lo que se elige en sus menús y botones.
  */
 export function TrayBridge() {

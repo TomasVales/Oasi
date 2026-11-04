@@ -16,6 +16,7 @@ import { BackgroundSettingsSection } from '@/features/settings/BackgroundSetting
 import { ProfileSettingsSection } from '@/features/settings/ProfileSettings'
 import { SoundSettingsSection } from '@/features/settings/SoundSettings'
 import { TimerSettingsSection } from '@/features/settings/TimerSettings'
+import { DiscordSettingsSection } from '@/features/settings/DiscordSettings'
 import { GoogleSettingsSection } from '@/features/settings/GoogleSettings'
 
 export function SettingsPage() {
@@ -44,6 +45,9 @@ export function SettingsPage() {
 
       <div className="mt-10">
         <TimerSettingsSection />
+      </div>
+      <div className="mt-10">
+        <DiscordSettingsSection />
       </div>
       <div className="mt-10">
         <ProfileSettingsSection />

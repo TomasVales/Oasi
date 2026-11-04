@@ -2,8 +2,8 @@ import { BrowserWindow, screen } from 'electron'
 import { PushChannel, type MiniState, type TrayState } from '@shared/ipc'
 import type { ThemeName } from '@shared/settings'
 
-const WIDTH = 248
-const HEIGHT = 72
+const WIDTH = 320
+const HEIGHT = 96
 const MARGIN = 16
 
 /**
