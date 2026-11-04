@@ -12,11 +12,24 @@ extraResources:
     to: drizzle
   - from: resources/icons
     to: icons
+# better-sqlite3 trae binarios N-API precompilados que ya funcionan en Electron:
+# no hace falta (ni conviene) recompilarlo al empaquetar.
+npmRebuild: false
+# Fusibles de Electron (se graban en el binario): la app empaquetada no puede usarse
+# como intérprete de Node ni recibir código por variables de entorno o flags de depuración.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
+  enableCookieEncryption: true
 asarUnpack:
   - node_modules/better-sqlite3/**
 mac:
   category: public.app-category.education
   target: [dmg]
+  # Sin certificado de Apple Developer: firma ad-hoc (funciona en esta Mac; para distribuir hace falta firmar y notarizar)
+  identity: null
 win:
   target: [nsis]
 linux:

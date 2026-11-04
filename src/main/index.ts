@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, safeStorage, shell } from 'electron'
+import { Client } from 'discord-rpc'
 import { APP_NAME } from '@shared/brand'
 import { isIconVariant, type IconVariant } from '@shared/pixelIcon'
 import { join } from 'node:path'
@@ -142,6 +143,22 @@ app.whenReady().then(() => {
 
   createMainWindow()
   applyAppIcon(currentIcon())
+
+  const clientId = '1567335462433984572'
+  const rpc = new Client({ transport: 'ipc' })
+
+  rpc.on('ready', () => {
+    rpc.setActivity({
+      details: 'Organizando el cuatrimestre',
+      state: 'En el planificador',
+      startTimestamp: new Date(),
+      largeImageKey: 'logo',
+      largeImageText: 'Oasi',
+      instance: false,
+    })
+  })
+
+  rpc.login({ clientId }).catch(console.error)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
