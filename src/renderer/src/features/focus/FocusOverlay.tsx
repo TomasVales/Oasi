@@ -9,10 +9,9 @@ import { cn } from '@/lib/cn'
 import { formatClock, formatDuration } from '@/lib/format'
 import { EASE_OUT_MAC } from '@/lib/motion'
 import { useSettings } from '@/hooks/useAppData'
-import { useSubjects } from '@/hooks/useSubjects'
-import { useSubjectColor } from '@/hooks/useSubjectColor'
 import { useBackgroundUrl } from '@/features/background/useBackgroundUrl'
 import { useSession } from '@/features/session/SessionProvider'
+import { SessionSubjectPicker } from '@/features/session/SessionSubjectPicker'
 import { MOD_KEY_LABEL } from '@/navigation'
 
 const OPEN_EVENT = 'studentos:focus-mode'
@@ -214,15 +213,12 @@ function FocusView({
   onClose: () => void
 }) {
   const { data: settings } = useSettings()
-  const { data: subjects } = useSubjects()
-  const color = useSubjectColor()
   const bgUrl = useBackgroundUrl(settings?.background.fileName)
   const [confirmStop, setConfirmStop] = useState(false)
 
   const t = session.timer
   const running = t.runningSince !== null
   const done = t.phase === 'done'
-  const subject = subjects?.find((s) => s.id === session.subjectId)
   const remaining = done ? 0 : phaseRemaining(t, now)
   const progress = done ? 1 : t.phaseDurationMs ? Math.min(1, phaseElapsed(t, now) / t.phaseDurationMs) : 0
   const status = done ? 'Bloque completo' : t.phase === 'break' ? 'Descanso' : running ? 'En foco' : 'En pausa'
@@ -293,10 +289,7 @@ function FocusView({
             <span className="font-display text-[min(13vh,84px)] leading-none font-extralight tracking-tight text-fg tabular-nums">
               {formatClock(remaining)}
             </span>
-            <span className="mt-3 flex max-w-[70%] items-center gap-2 truncate text-sm text-fg-muted">
-              {subject && <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color(subject.color) }} />}
-              <span className="truncate">{subject?.name ?? 'Sesión libre'}</span>
-            </span>
+            <SessionSubjectPicker className="mt-3 max-w-[70%] gap-2 text-sm text-fg-muted" dotClassName="h-2.5 w-2.5" />
             {session.mode && <span className="mt-1 text-xs text-fg-subtle">{studyModeLabel(session.mode)}</span>}
           </div>
         </div>

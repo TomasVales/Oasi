@@ -18,10 +18,9 @@ import { cn } from '@/lib/cn'
 import { formatClock, formatDuration } from '@/lib/format'
 import { queryKeys } from '@/lib/queryClient'
 import { useStreak } from '@/hooks/useAppData'
-import { useSubjects } from '@/hooks/useSubjects'
-import { useSubjectColor } from '@/hooks/useSubjectColor'
 import { useSession } from '@/features/session/SessionProvider'
 import { LogStudyDialog } from '@/features/session/LogStudyDialog'
+import { SessionSubjectPicker } from '@/features/session/SessionSubjectPicker'
 import { openFocusMode, TIMER_SHORTCUTS } from '@/features/focus/FocusOverlay'
 import { MOD_KEY_LABEL } from '@/navigation'
 import { useTheme } from '@/theme/ThemeProvider'
@@ -75,8 +74,6 @@ function ProgressRing({ progress, tone, children }: { progress: number; tone: st
 /** Tarjeta de la sesión en curso (aparece sobre la de racha). */
 function SessionCard() {
   const { session, now, pause, resume, skip, stop } = useSession()
-  const { data: subjects } = useSubjects()
-  const color = useSubjectColor()
   return (
     <AnimatePresence initial={false}>
       {session && (
@@ -88,7 +85,7 @@ function SessionCard() {
           transition={spring.sheet}
           className="overflow-hidden"
         >
-          <SessionCardBody session={session} now={now} pause={pause} resume={resume} skip={skip} stop={stop} subjects={subjects} color={color} />
+          <SessionCardBody session={session} now={now} pause={pause} resume={resume} skip={skip} stop={stop} />
         </motion.div>
       )}
     </AnimatePresence>
@@ -101,18 +98,13 @@ function SessionCardBody({
   pause,
   resume,
   skip,
-  stop,
-  subjects,
-  color
+  stop
 }: Pick<ReturnType<typeof useSession>, 'now' | 'pause' | 'resume' | 'skip' | 'stop'> & {
   session: NonNullable<ReturnType<typeof useSession>['session']>
-  subjects: ReturnType<typeof useSubjects>['data']
-  color: ReturnType<typeof useSubjectColor>
 }) {
 
   const t = session.timer
   const running = t.runningSince !== null
-  const subject = subjects?.find((s) => s.id === session.subjectId)
   const status = t.phase === 'done' ? 'Bloque completo' : t.phase === 'break' ? 'Descanso' : running ? 'En foco' : 'En pausa'
   const tone = t.phase === 'done' ? 'text-accent' : t.phase === 'break' ? 'text-warning' : running ? 'text-success' : 'text-fg-subtle'
   const stroke = t.phase === 'break' ? 'stroke-warning' : t.phase === 'done' ? 'stroke-accent' : 'stroke-success'
@@ -138,10 +130,7 @@ function SessionCardBody({
         <div className="min-w-0 flex-1">
           {/* Solo el estado se anuncia (no cada segundo del reloj). */}
           <p aria-live="polite" className={cn('text-[12px] font-semibold', tone, running && 'live-pulse')}>{status}</p>
-          <p className="flex items-center gap-1.5 truncate text-[12px] text-fg">
-            {subject && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color(subject.color) }} />}
-            <span className="truncate">{subject?.name ?? 'Sesión libre'}</span>
-          </p>
+          <SessionSubjectPicker className="text-[12px] text-fg" />
           {session.mode && <p className="truncate text-[11px] text-fg-subtle">{studyModeLabel(session.mode)}</p>}
         </div>
       </div>

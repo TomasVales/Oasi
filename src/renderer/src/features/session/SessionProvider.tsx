@@ -58,6 +58,8 @@ interface SessionContextValue {
   /** Suma o resta minutos a la fase actual. */
   adjust: (minutes: number) => void
   stop: () => Promise<void>
+  /** Cambia a qué materia va la sesión en curso (null = libre). */
+  setSubject: (subjectId: string | null) => Promise<void>
   finished: FinishedSession | null
   clearFinished: () => void
 }
@@ -178,6 +180,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [finishCurrent, pomodoro]
   )
 
+  const setSubject = useCallback(
+    async (subjectId: string | null) => {
+      const s = sessionRef.current
+      if (!s || s.subjectId === subjectId) return
+      setSession({ ...s, subjectId })
+      try {
+        await api.sessions.update(s.id, { subjectId })
+      } catch (err) {
+        if (sessionRef.current?.id === s.id) setSession({ ...sessionRef.current, subjectId: s.subjectId })
+        throw err
+      }
+      refreshStats()
+    },
+    [refreshStats]
+  )
+
   const update = (fn: (t: TimerState, now: number) => TimerState) => {
     const s = sessionRef.current
     if (!s) return
@@ -197,12 +215,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       skip: () => update(skipPhase),
       adjust: (minutes: number) => update((t, now) => adjustPhase(t, minutes * 60_000, now)),
       stop: () => finishCurrent(true),
+      setSubject,
       finished,
       clearFinished: () => setFinished(null)
     }),
     // update es estable en la práctica (lee refs)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [session, now, start, finishCurrent, finished]
+    [session, now, start, finishCurrent, setSubject, finished]
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
